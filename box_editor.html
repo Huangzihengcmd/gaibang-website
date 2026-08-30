@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丐帮百宝箱 - 后台编辑器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"微软雅黑",sans-serif}
+body{background:#111;color:#fff;padding:30px}
+.card{background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);border:1px solid #ffd700;border-radius:12px;padding:24px;margin-bottom:24px}
+h1,h2{color:#ffd700;margin-bottom:15px}
+input,textarea,select{width:100%;padding:12px;margin:8px 0;background:#222;border:1px solid #444;color:#fff;border-radius:8px;font-size:15px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:#ffd700}
+button{padding:12px 24px;background:#ffd700;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-right:10px;margin-top:8px}
+button.del{background:#e74c3c;color:#fff}
+button:disabled{background:#666;cursor:not-allowed}
+.tool-item{background:#222;padding:16px;border-radius:10px;margin:10px 0}
+.save-tip{position:fixed;top:20px;right:20px;padding:10px 20px;border-radius:8px;font-size:14px;z-index:99999;display:none}
+.save-tip.success{background:#28a745;color:#fff}
+.save-tip.error{background:#e74c3c;color:#fff}
+.no-auth{text-align:center;padding:80px 20px}
+.no-auth h2{color:#e74c3c;margin-bottom:15px}
+.no-auth p{color:#999;margin-bottom:20px}
+.no-auth a{display:inline-block;padding:12px 30px;background:#ffd700;color:#000;text-decoration:none;border-radius:8px;font-weight:bold}
+</style>
+</head>
+<body>
+
+<div id="editorPage" style="display:none">
+<h1>🧰 丐帮百宝箱 - 后台编辑器</h1>
+<div class="save-tip" id="saveTip"></div>
+
+<!-- 新增分类 -->
+<div class="card">
+  <h2>1. 新增分类</h2>
+  <input id="catName" placeholder="分类名称（例：常用软件、游戏工具、影音播放）">
+  <button onclick="addCategory()">创建分类</button>
+</div>
+
+<!-- 新增工具 -->
+<div class="card">
+  <h2>2. 添加工具/软件</h2>
+  <select id="catSelect"></select>
+  <input id="toolName" placeholder="软件/工具名称（例：酷狗音乐）">
+  <input id="toolDesc" placeholder="软件描述（例：免费音乐播放软件）">
+  <input id="officialUrl" placeholder="官网链接（选填，没有就空着）">
+  <input id="downloadUrl" placeholder="下载链接（选填，没有就空着）">
+  <button onclick="addTool()">添加到百宝箱</button>
+</div>
+
+<!-- 已添加内容列表 -->
+<div id="contentList"></div>
+</div>
+
+<div id="noAuth" class="no-auth" style="display:none">
+  <h2>⚠️ 无权限访问</h2>
+  <p>百宝箱编辑器仅限丐帮帮主使用，请先以管理员身份登录。</p>
+  <a href="index.html">前往登录</a>
+</div>
+
+<script>
+const API_URL = "";
+const ADMIN_EMAIL = "a13128283441@163.com";
+let boxData = [];
+
+// 检查管理员权限
+function checkAuth() {
+  const loginUser = localStorage.getItem("loginUser");
+  if (loginUser === ADMIN_EMAIL) {
+    document.getElementById("editorPage").style.display = "block";
+    document.getElementById("noAuth").style.display = "none";
+    return true;
+  } else {
+    document.getElementById("editorPage").style.display = "none";
+    document.getElementById("noAuth").style.display = "block";
+    return false;
+  }
+}
+
+// 显示保存提示
+function showSaveTip(msg, success = true) {
+  const tip = document.getElementById("saveTip");
+  tip.textContent = msg;
+  tip.className = "save-tip " + (success ? "success" : "error");
+  tip.style.display = "block";
+  setTimeout(() => tip.style.display = "none", 2000);
+}
+
+// 从后端加载数据
+async function loadData() {
+  try {
+    const res = await fetch(`${API_URL}/api/box`);
+    const result = await res.json();
+    boxData = result.data || [];
+    render();
+  } catch (err) {
+    showSaveTip("数据加载失败，请刷新页面", false);
+    console.error("百宝箱数据加载失败：", err);
+  }
+}
+
+// 保存到后端
+async function saveToServer() {
+  const adminEmail = localStorage.getItem("loginUser");
+  try {
+    const res = await fetch(`${API_URL}/api/admin/box`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminEmail, data: boxData })
+    });
+    const result = await res.json();
+    if (result.code === 200) {
+      showSaveTip("✅ 已同步到网站");
+    } else {
+      showSaveTip("❌ " + result.msg, false);
+    }
+  } catch (err) {
+    showSaveTip("❌ 保存失败，请检查网络", false);
+    console.error("百宝箱保存失败：", err);
+  }
+}
+
+// 渲染页面
+function render() {
+  const catSelect = document.getElementById('catSelect');
+  const contentList = document.getElementById('contentList');
+
+  catSelect.innerHTML = boxData.map((cat, index) =>
+    `<option value="${index}">${cat.catName}</option>`
+  ).join('');
+
+  let html = '';
+  boxData.forEach((cat, catIndex) => {
+    html += `
+    <div class="card">
+      <h2>${cat.catName}
+        <button class="del" onclick="deleteCategory(${catIndex})">删除整个分类</button>
+      </h2>
+    `;
+
+    (cat.tools || []).forEach((tool, toolIndex) => {
+      html += `
+      <div class="tool-item">
+        <div><strong>名称：</strong>${tool.name}</div>
+        <div><strong>描述：</strong>${tool.desc}</div>
+        <div><strong>官网：</strong>${tool.officialUrl || '无'}</div>
+        <div><strong>下载链接：</strong>${tool.downloadUrl || '无'}</div>
+        <button class="del" onclick="deleteTool(${catIndex}, ${toolIndex})">删除此工具</button>
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  contentList.innerHTML = html;
+}
+
+// 新增分类
+function addCategory() {
+  const name = document.getElementById('catName').value.trim();
+  if (!name) {
+    alert('请输入分类名称！');
+    return;
+  }
+  boxData.push({ catName: name, tools: [] });
+  document.getElementById('catName').value = '';
+  render();
+  saveToServer();
+}
+
+// 新增工具
+function addTool() {
+  const catIndex = document.getElementById('catSelect').value;
+  const name = document.getElementById('toolName').value.trim();
+  const desc = document.getElementById('toolDesc').value.trim();
+  const officialUrl = document.getElementById('officialUrl').value.trim();
+  const downloadUrl = document.getElementById('downloadUrl').value.trim();
+
+  if (!name) {
+    alert('请输入工具名称！');
+    return;
+  }
+  if (catIndex === '' || catIndex === undefined || catIndex === null) {
+    alert('请先创建分类！');
+    return;
+  }
+
+  boxData[catIndex].tools.push({
+    name: name,
+    desc: desc,
+    officialUrl: officialUrl,
+    downloadUrl: downloadUrl
+  });
+
+  document.getElementById('toolName').value = '';
+  document.getElementById('toolDesc').value = '';
+  document.getElementById('officialUrl').value = '';
+  document.getElementById('downloadUrl').value = '';
+  render();
+  saveToServer();
+}
+
+// 删除分类
+function deleteCategory(catIndex) {
+  if (!confirm('确定要删除这个分类吗？分类下的所有工具都会被删除！')) {
+    return;
+  }
+  boxData.splice(catIndex, 1);
+  render();
+  saveToServer();
+}
+
+// 删除工具
+function deleteTool(catIndex, toolIndex) {
+  if (!confirm('确定要删除这个工具吗？')) {
+    return;
+  }
+  boxData[catIndex].tools.splice(toolIndex, 1);
+  render();
+  saveToServer();
+}
+
+// 页面加载
+window.onload = function() {
+  if (checkAuth()) {
+    loadData();
+  }
+};
+</script>
+</body>
+</html>

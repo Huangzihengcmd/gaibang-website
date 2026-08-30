@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丐帮</title>
+<link rel="icon" href="logo.jpg">
+<link rel="stylesheet" href="style.css">
+<style>
+/* 仅新增功能弹窗样式，原有页面样式全部在style.css不动 */
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.95);display:none;justify-content:center;align-items:center;z-index:99999}
+.modal-box{background:#111;border:2px solid gold;width:380px;padding:30px;border-radius:10px;color:#fff}
+.modal-box h2{color:gold;text-align:center;margin-bottom:20px}
+.tab{display:flex;margin-bottom:20px}
+.tab button{flex:1;padding:10px;background:none;border:none;color:#fff;font-size:16px;cursor:pointer;border-bottom:2px solid transparent}
+.tab button.active{border-color:gold;color:gold}
+.form-item{margin-bottom:15px}
+.form-item input{width:100%;padding:10px;background:#222;border:1px solid #444;color:#fff;border-radius:5px;outline:none}
+.form-item input:focus{border-color:gold}
+.code-row{display:flex;gap:10px}
+.code-row input{flex:1}
+.code-row button{padding:10px;background:gold;color:#000;border:none;border-radius:5px;white-space:nowrap;cursor:pointer}
+.code-row button:disabled{background:#aaa;cursor:not-allowed}
+.submit-btn{width:100%;padding:12px;background:gold;color:#000;font-weight:bold;border:none;border-radius:5px;cursor:pointer;margin-top:10px}
+.close{text-align:right;color:gold;cursor:pointer}
+.form-panel{display:none}
+.form-panel.active{display:block}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:100000;display:none}
+.toast.success{background:#28a745}
+.toast.error{background:#dc3545}
+
+.user-bar{position:fixed;top:20px;right:20px;z-index:9999;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.8);padding:8px 12px;border-radius:6px;color:gold;font-size:14px}
+.user-bar button{background:gold;color:#000;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px}
+.login-btns{position:fixed;top:20px;right:20px;z-index:9999;gap:10px;display:flex}
+.login-btns button{padding:8px 16px;border-radius:5px;cursor:pointer}
+
+.join-modal{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;justify-content:center;align-items:center;z-index:99999}
+.join-box{background:#111;border:2px solid gold;width:400px;padding:30px;border-radius:10px;color:#fff}
+.join-box h2{color:gold;margin-top:0;text-align:center}
+.join-box input{width:100%;padding:10px;margin:8px 0;background:#222;border:1px solid #444;color:#fff;border-radius:5px}
+.join-box .btn-group{display:flex;gap:10px;justify-content:center;margin-top:15px}
+.join-box button{padding:10px 20px;border:none;border-radius:5px;cursor:pointer}
+.btn-confirm{background:gold;color:#000}
+.btn-cancel{background:#333;color:#fff}
+
+.member-tip{color:gold;font-size:18px;margin:10px 0;display:none}
+
+/* 固定logo尺寸60px，左上角小图标，不会放大铺满屏幕 */
+.site-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  position: absolute;
+  left: 20px;
+  top: 15px;
+  z-index: 10;
+}
+</style>
+</head>
+
+<body>
+<div class="toast" id="toast"></div>
+
+<div id="userBar" class="user-bar" style="display:none">
+  <span id="showAccount"></span>
+  <button onclick="logout()">退出登录</button>
+</div>
+<div id="loginBtns" class="login-btns" style="display:flex">
+  <button onclick="openModal('login')" style="background:gold;color:#000;border:none">登录</button>
+  <button onclick="openModal('register')" style="background:#000;color:gold;border:1px solid gold">注册</button>
+</div>
+
+<!-- 原版页面头部，完全匹配你的截图布局 -->
+<header>
+  <img src="logo.jpg" class="site-logo" alt="丐帮Logo">
+  <h1 class="floating">丐帮</h1>
+  <nav>
+      <ul>
+          <li><a href="index.html">首页</a></li>
+          <li><a href="#">帮派介绍</a></li>
+          <li><a href="news.html">新闻</a></li>
+          <li><a href="box.html">百宝箱</a></li>
+          <li><a href="#">联系</a></li>
+      </ul>
+  </nav>
+</header>
+
+<main>
+    <section class="welcome floating-text">
+        <h2>欢迎来到丐帮</h2>
+        <p>这里是丐帮官方网站，传承武侠文化，记录江湖新闻。</p>
+        <div id="memberTip" class="member-tip"></div>
+        <button id="joinBtn" class="glow-button" onclick="openJoin()">加入我们</button>
+    </section>
+
+    <section class="news floating-text">
+        <h2>最新动态</h2>
+        <ul id="newsList">
+            <li>丐帮新成员加入，欢迎！</li>
+            <li>年度江湖大会即将举行。</li>
+            <li>江湖任务发布，等待挑战者！</li>
+        </ul>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; 2026 丐帮 | 版权所有</p>
+</footer>
+
+<div class="meteor"></div>
+<div class="leaf leaf1"></div>
+<div class="leaf leaf2"></div>
+<div class="leaf leaf3"></div>
+
+<!-- 登录注册弹窗 -->
+<div class="modal" id="modal">
+    <div class="modal-box">
+        <div class="close" onclick="closeModal()">× 关闭</div>
+        <h2>丐帮账号系统</h2>
+        <div class="tab">
+            <button id="tab-login" class="active" onclick="switchTab('login')">登录</button>
+            <button id="tab-register" onclick="switchTab('register')">注册</button>
+        </div>
+
+        <div class="form-panel active" id="login-panel">
+            <div class="form-item">
+                <input type="text" id="login-account" placeholder="邮箱">
+            </div>
+            <div class="form-item">
+                <input type="password" id="login-pwd" placeholder="密码">
+            </div>
+            <button class="submit-btn" onclick="login()">登录</button>
+        </div>
+
+        <div class="form-panel" id="register-panel">
+            <div class="form-item">
+                <input type="email" id="reg-email" placeholder="您的邮箱">
+            </div>
+            <div class="form-item">
+                <input type="password" id="reg-pwd" placeholder="设置密码">
+            </div>
+            <div class="form-item code-row">
+                <input type="text" id="reg-code" placeholder="邮箱收到的验证码">
+                <button onclick="sendCode()" id="sendCodeBtn">发送验证码</button>
+            </div>
+            <button class="submit-btn" onclick="register()">注册</button>
+        </div>
+    </div>
+</div>
+
+<!-- 入帮申请弹窗 -->
+<div class="join-modal" id="joinModal">
+  <div class="join-box">
+    <h2>入帮申请表</h2>
+    <input id="apply-name" placeholder="姓名">
+    <input id="apply-school" placeholder="学校">
+    <input id="apply-grade" placeholder="年级">
+    <input id="apply-class" placeholder="班别">
+    <div class="btn-group">
+      <button class="btn-confirm" onclick="submitApply()">提交申请</button>
+      <button class="btn-cancel" onclick="closeJoin()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员审核面板 -->
+<div id="adminPanel" style="max-width:1000px;margin:20px auto;padding:20px;display:none">
+  <h2 style="color:gold">入帮申请审核</h2>
+  <div id="applyList" style="color:#fff"></div>
+</div>
+
+<script>
+// ========== 后端接口地址 ==========
+// 前后端同域部署，使用相对路径即可
+const API_URL = "";
+
+const ADMIN_EMAIL = "a13128283441@163.com";
+
+function toast(msg, success=true){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + (success ? "success" : "error");
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 3000);
+}
+
+window.onload = function() {
+  checkLoginStatus();
+  loadMemberStatus();
+};
+
+// 读取本地登录标记（仅存邮箱，所有数据从服务器拉取）
+function checkLoginStatus() {
+  const user = localStorage.getItem("loginUser");
+  if(user){
+    document.getElementById("userBar").style.display = "flex";
+    document.getElementById("loginBtns").style.display = "none";
+    document.getElementById("showAccount").textContent = user;
+  }else{
+    document.getElementById("userBar").style.display = "none";
+    document.getElementById("loginBtns").style.display = "flex";
+  }
+}
+
+// 发送验证码（调用后端真实发送）
+async function sendCode() {
+  const emailInput = document.getElementById("reg-email");
+  const email = emailInput.value.trim();
+  const sendBtn = document.getElementById("sendCodeBtn");
+  if (!email) {
+    toast("请先填写接收验证码的邮箱", false);
+    return;
+  }
+  sendBtn.disabled = true;
+  sendBtn.innerText = "发送中...";
+  try {
+    const res = await fetch(`${API_URL}/api/sendCode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    const result = await res.json();
+    if (result.code === 200) {
+      toast(result.msg);
+      let countDown = 60;
+      const timer = setInterval(()=>{
+        countDown--;
+        sendBtn.innerText = `${countDown}s 后重发`;
+        if(countDown <= 0){
+          clearInterval(timer);
+          sendBtn.disabled = false;
+          sendBtn.innerText = "发送验证码";
+        }
+      }, 1000);
+    } else {
+      toast(result.msg, false);
+      sendBtn.disabled = false;
+      sendBtn.innerText = "发送验证码";
+    }
+  } catch (err) {
+    toast("验证码发送失败，请稍后重试", false);
+    sendBtn.disabled = false;
+    sendBtn.innerText = "发送验证码";
+    console.error("验证码发送报错：", err);
+  }
+}
+
+// 注册 对接后端存入服务器数据库
+async function register() {
+  const email = document.getElementById("reg-email").value.trim();
+  const pwd = document.getElementById("reg-pwd").value.trim();
+  const inputCode = document.getElementById("reg-code").value.trim();
+  if (!email || !pwd || !inputCode) return toast("邮箱、密码、验证码全部不能为空", false);
+
+  const res = await fetch(`${API_URL}/api/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: pwd, code: inputCode })
+  });
+  const result = await res.json();
+  if(result.code === 200){
+    toast(result.msg);
+    closeModal();
+    openModal("login");
+  }else{
+    toast(result.msg, false);
+  }
+}
+
+// 登录 校验服务器账号
+async function login() {
+  const email = document.getElementById("login-account").value.trim();
+  const pwd = document.getElementById("login-pwd").value.trim();
+  const res = await fetch(`${API_URL}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: pwd })
+  });
+  const result = await res.json();
+  if(result.code === 200){
+    localStorage.setItem("loginUser", email);
+    toast(result.msg);
+    closeModal();
+    refreshAll();
+  }else{
+    toast(result.msg, false);
+  }
+}
+
+// 提交入帮申请 存入服务器
+async function submitApply() {
+  const email = localStorage.getItem("loginUser");
+  const name = document.getElementById("apply-name").value.trim();
+  const school = document.getElementById("apply-school").value.trim();
+  const grade = document.getElementById("apply-grade").value.trim();
+  const className = document.getElementById("apply-class").value.trim();
+  if (!name || !school || !grade || !className) return toast("请完整填写姓名、学校、年级、班别", false);
+
+  const res = await fetch(`${API_URL}/api/submitApply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, name, school, grade, className })
+  });
+  const result = await res.json();
+  toast(result.msg, result.code === 200);
+  closeJoin();
+  loadMemberStatus();
+}
+
+// 加载用户身份状态（从服务器读取申请）
+async function loadMemberStatus() {
+  const loginUser = localStorage.getItem("loginUser");
+  const tipDom = document.getElementById("memberTip");
+  const joinBtnDom = document.getElementById("joinBtn");
+  const adminPanel = document.getElementById("adminPanel");
+  adminPanel.style.display = "none";
+
+  if (!loginUser) {
+    tipDom.style.display = "none";
+    joinBtnDom.style.display = "inline-block";
+    return;
+  }
+
+  // 管理员
+  if (loginUser === ADMIN_EMAIL) {
+    tipDom.innerText = "您是丐帮帮主";
+    tipDom.style.display = "block";
+    joinBtnDom.style.display = "none";
+    adminPanel.style.display = "block";
+    await loadAdminPanel();
+    return;
+  }
+
+  // 普通用户读取自身申请
+  const res = await fetch(`${API_URL}/api/getMyApply?email=${loginUser}`);
+  const result = await res.json();
+  const applyInfo = result.data;
+  if (!applyInfo) {
+    tipDom.style.display = "none";
+    joinBtnDom.style.display = "inline-block";
+  } else if (applyInfo.status === "pending") {
+    tipDom.innerText = "您的入帮申请已提交，待帮主审核";
+    tipDom.style.display = "block";
+    joinBtnDom.style.display = "none";
+  } else if (applyInfo.status === "pass") {
+    tipDom.innerText = "您已是丐帮正式成员";
+    tipDom.style.display = "block";
+    joinBtnDom.style.display = "none";
+  } else if (applyInfo.status === "reject") {
+    tipDom.innerText = "申请被拒绝，可重新申请";
+    tipDom.style.display = "block";
+    joinBtnDom.style.display = "inline-block";
+  }
+}
+
+// 管理员加载全部申请
+async function loadAdminPanel() {
+  const adminEmail = localStorage.getItem("loginUser");
+  const listDom = document.getElementById("applyList");
+  const res = await fetch(`${API_URL}/api/admin/getAllApply?adminEmail=${adminEmail}`);
+  const result = await res.json();
+  const allApply = result.data;
+  if (allApply.length === 0) {
+    listDom.innerHTML = `<p style="color:#aaa;text-align:center">暂无入帮申请</p>`;
+    return;
+  }
+  listDom.innerHTML = allApply.map(item => `
+    <div style="background:#222;padding:16px;margin:12px 0;border-radius:8px;border:1px solid rgba(255,215,0,0.2)">
+      <div>账号：${item.email}</div>
+      <div>姓名：${item.name}</div>
+      <div>学校信息：${item.school} ${item.grade} ${item.className}</div>
+      <div>提交时间：${item.createTime}</div>
+      <div>当前状态：${item.status}</div>
+      <div style="margin-top:10px">
+        <button onclick="auditApply('${item.email}','pass')" style="background:gold;color:#000;border:none;padding:6px 12px;border-radius:4px;margin-right:10px;cursor:pointer">通过</button>
+        <button onclick="auditApply('${item.email}','reject')" style="background:#e74c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">拒绝</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+// 管理员审核申请
+async function auditApply(targetEmail, status) {
+  const adminEmail = localStorage.getItem("loginUser");
+  const res = await fetch(`${API_URL}/api/admin/updateApply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adminEmail, targetEmail, newStatus: status })
+  });
+  const result = await res.json();
+  toast(result.msg, result.code === 200);
+  await loadAdminPanel();
+}
+
+// 退出登录
+function logout() {
+  localStorage.removeItem("loginUser");
+  refreshAll();
+  toast("已退出登录");
+}
+
+// 页面全部状态刷新
+function refreshAll() {
+  checkLoginStatus();
+  loadMemberStatus();
+}
+
+// 弹窗控制
+function openModal(tab) {
+  document.getElementById("modal").style.display = "flex";
+  switchTab(tab);
+}
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+function switchTab(tab) {
+  const isLogin = tab === "login";
+  document.getElementById("login-panel").classList.toggle("active", isLogin);
+  document.getElementById("register-panel").classList.toggle("active", !isLogin);
+  document.getElementById("tab-login").classList.toggle("active", isLogin);
+  document.getElementById("tab-register").classList.toggle("active", !isLogin);
+}
+
+function openJoin() {
+  if (!localStorage.getItem("loginUser")) {
+    toast("请先登录", false);
+    openModal("login");
+    return;
+  }
+  document.getElementById("joinModal").style.display = "flex";
+}
+function closeJoin() {
+  document.getElementById("joinModal").style.display = "none";
+}
+</script>
+</body>
+</html>

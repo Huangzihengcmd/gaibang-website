@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丐帮 - 新闻中心</title>
+<link rel="icon" href="logo.jpg">
+<link rel="stylesheet" href="style.css">
+<style>
+header {
+  text-align: center;
+  position: relative;
+  padding: 15px 0;
+}
+.site-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+header h1 {
+  margin: 0 auto;
+  position: relative;
+  z-index: 5;
+}
+.news-container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+.news-container h2 {
+    color: #ffd700;
+    text-align: center;
+    margin-bottom: 30px;
+}
+.news-item {
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 25px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,215,0,0.2);
+}
+.news-item h3 {
+    color: #ffd700;
+    margin-bottom: 10px;
+}
+.news-item .time {
+    color: #999;
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+.news-item .content {
+    color: #fff;
+    line-height: 1.8;
+}
+.news-item .content img {
+    max-width: 100%;
+    border-radius: 6px;
+}
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 30px;
+    color: #ffd700;
+    text-decoration: none;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+<header>
+  <img src="logo.jpg" class="site-logo" alt="丐帮Logo">
+  <h1 class="floating">丐帮</h1>
+  <nav>
+      <ul>
+          <li><a href="index.html">首页</a></li>
+          <li><a href="#">帮派介绍</a></li>
+          <li><a href="news.html">新闻</a></li>
+          <li><a href="box.html" target="_blank">百宝箱</a></li>
+          <li><a href="#">联系</a></li>
+      </ul>
+  </nav>
+</header>
+
+<div class="news-container">
+    <h2>新闻中心</h2>
+    <div id="allNewsList"></div>
+    <a href="index.html" class="back-link">← 返回首页</a>
+</div>
+
+<script>
+const API_URL = "";
+
+window.onload = function() {
+    loadAllNews();
+};
+
+async function loadAllNews() {
+    const container = document.getElementById('allNewsList');
+    try {
+        const res = await fetch(`${API_URL}/api/news`);
+        const result = await res.json();
+        const list = result.data || [];
+
+        if (list.length === 0) {
+            container.innerHTML = '<p style="text-align:center;color:#999;background:rgba(0,0,0,0.6);padding:20px;border-radius:10px">暂无新闻</p>';
+            return;
+        }
+
+        container.innerHTML = list.map(item => `
+            <div class="news-item">
+                <h3>${item.title}</h3>
+                <div class="time">发布时间：${item.time || '未知时间'}</div>
+                <div class="content">${item.content}</div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = '<p style="text-align:center;color:#e74c3c;background:rgba(0,0,0,0.6);padding:20px;border-radius:10px">新闻加载失败，请稍后重试</p>';
+        console.error("新闻加载失败：", err);
+    }
+}
+</script>
+
+</body>
+</html>

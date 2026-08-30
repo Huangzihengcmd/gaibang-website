@@ -1,0 +1,137 @@
+/* ---------- 全局 ---------- */
+body {
+    margin: 0;
+    font-family: "Microsoft YaHei", Arial, sans-serif;
+    /* 核心修复：背景图全屏显示，替换了原来的green纯色 */
+    background: url('./bg.jpg') no-repeat center center fixed;
+    background-size: cover;
+    background-color: #000; /* 兜底背景色，图片加载时不会空白 */
+    color: #fff;
+    overflow-x: hidden;
+    position: relative;
+}
+/* ---------- 烟雾效果 ---------- */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 70%);
+    opacity: 0.2;
+    pointer-events: none;
+    animation: smoke 60s linear infinite;
+    z-index: 0;
+}
+@keyframes smoke {
+    0% { transform: translate(0,0) rotate(0deg); }
+    50% { transform: translate(-50px,50px) rotate(180deg); }
+    100% { transform: translate(0,0) rotate(360deg); }
+}
+/* ---------- 标题和文字动画 ---------- */
+@keyframes float { 0%{transform:translateY(0);}50%{transform:translateY(-10px);}100%{transform:translateY(0);} }
+.floating { animation: float 4s ease-in-out infinite; }
+@keyframes floatText { 0%{transform:translateY(0);}50%{transform:translateY(-5px);}100%{transform:translateY(0);} }
+.floating-text { animation: floatText 6s ease-in-out infinite; }
+/* ---------- 头部 ---------- */
+header {
+    background-color: rgba(0,0,0,0.7);
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+header h1 { font-size: 3em; margin: 0; text-shadow: 2px 2px #000; }
+nav ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+nav a {
+    color: gold;
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.3s;
+}
+nav a:hover { color: #fff; text-shadow: 0 0 10px gold; }
+/* ---------- 主体 ---------- */
+main {
+    padding: 40px;
+    max-width: 900px;
+    margin: 50px auto;
+    background-color: rgba(0,0,0,0.6);
+    border-radius: 15px;
+    box-shadow: 0 0 30px #000;
+    position: relative;
+    z-index: 1;
+}
+section { margin-bottom: 30px; }
+h2 { border-bottom: 2px solid gold; display: inline-block; padding-bottom: 5px; }
+.news ul { padding-left: 20px; }
+.news li { margin-bottom: 10px; }
+/* ---------- 按钮 ---------- */
+button.glow-button {
+    background-color: gold;
+    color: black;
+    font-weight: bold;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 5px gold;
+    transition: 0.3s;
+}
+button.glow-button:hover {
+    box-shadow: 0 0 20px orange;
+    transform: scale(1.1);
+}
+/* ---------- 页脚 ---------- */
+footer {
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(0,0,0,0.7);
+    position: relative;
+    z-index: 1;
+}
+/* ---------- 流星 ---------- */
+.meteor {
+    position: fixed;
+    width: 3px;
+    height: 80px;
+    background: linear-gradient(to bottom, white, rgba(255,255,255,0));
+    top: -100px;
+    left: 80%;
+    opacity: 0.8;
+    transform: rotate(45deg);
+    animation: meteor 3s linear infinite;
+    z-index: 0;
+}
+@keyframes meteor {
+    0% { top: -100px; left: 80%; opacity: 0; }
+    10% { opacity: 1; }
+    100% { top: 100vh; left: 20%; opacity: 0; }
+}
+/* ---------- 落叶 ---------- */
+.leaf {
+    position: fixed;
+    width: 30px;
+    height: 30px;
+    /* 修复：国内可访问的稳定落叶图片链接，替换了原来的imgur外链 */
+    background: url('https://picsum.photos/id/106/30/30') no-repeat center center;
+    background-size: contain;
+    opacity: 0.6;
+    z-index: 0;
+}
+.leaf1 { left: 10%; top: -50px; animation: leafFall 15s linear infinite; }
+.leaf2 { left: 50%; top: -50px; animation: leafFall 20s linear infinite; }
+.leaf3 { left: 80%; top: -50px; animation: leafFall 18s linear infinite; }
+@keyframes leafFall {
+    0% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(50vh) rotate(180deg); }
+    100% { transform: translateY(100vh) rotate(360deg); }
+}

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丐帮 · 百宝箱</title>
+<link rel="icon" href="logo.jpg">
+<link rel="stylesheet" href="style.css">
+<style>
+/* 和主页完全统一的头部样式 */
+header {
+  text-align: center;
+  position: relative;
+  padding: 15px 0;
+}
+.site-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+header h1 {
+  margin: 0 auto;
+  position: relative;
+  z-index: 5;
+  color: #fff;
+}
+
+/* 页面主体 */
+.container {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+.page-title {
+  text-align: center;
+  color: #ffd700;
+  margin-bottom: 35px;
+  font-size: 30px;
+}
+
+/* 分类样式 */
+.category {
+  margin-bottom: 45px;
+}
+.category-title {
+  color: #ffd700;
+  font-size: 22px;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(255,215,0,0.3);
+}
+
+/* 工具卡片网格 */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* 工具卡片 - 亚克力效果 */
+.tool-item {
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 14px;
+  padding: 24px;
+  color: #fff;
+  text-align: center;
+  transition: 0.3s;
+}
+.tool-item:hover {
+  transform: translateY(-5px);
+  background: rgba(0,0,0,0.8);
+}
+.tool-item h3 {
+  color: #ffd700;
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+.tool-item .desc {
+  color: #eee;
+  font-size: 14px;
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+
+/* 双按钮组 */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn-official {
+  padding: 8px 16px;
+  background: transparent;
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.btn-download {
+  padding: 8px 16px;
+  background: #ffd700;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* 返回首页按钮 */
+.back {
+  text-align: center;
+  margin-top: 60px;
+}
+.back a {
+  color: #ffd700;
+  font-size: 20px;
+  font-weight: bold;
+  text-decoration: none;
+  padding: 14px 30px;
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  display: inline-block;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="logo.jpg" class="site-logo" alt="丐帮Logo">
+  <h1 class="floating">丐帮</h1>
+  <nav>
+      <ul>
+          <li><a href="index.html">首页</a></li>
+          <li><a href="#">帮派介绍</a></li>
+          <li><a href="news.html">新闻</a></li>
+          <li><a href="box.html">百宝箱</a></li>
+          <li><a href="#">联系</a></li>
+      </ul>
+  </nav>
+</header>
+
+<div class="container">
+  <h2 class="page-title">🧰 百宝箱</h2>
+  <div id="toolContent">
+    <p style="text-align:center;color:#fff;font-size:18px;">加载中...</p>
+  </div>
+
+  <div class="back">
+    <a href="index.html">← 返回首页</a>
+  </div>
+</div>
+
+<script>
+const API_URL = "";
+
+window.onload = async function () {
+  const el = document.getElementById('toolContent');
+  try {
+    const res = await fetch(`${API_URL}/api/box`);
+    const result = await res.json();
+    const data = result.data || [];
+
+    if (data.length === 0) {
+      el.innerHTML = '<p style="text-align:center;color:#fff;font-size:18px;">暂无工具，请打开后台编辑器添加</p>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(category => {
+      html += `
+      <div class="category">
+        <div class="category-title">${category.catName}</div>
+        <div class="tool-grid">
+      `;
+
+      (category.tools || []).forEach(tool => {
+        html += `
+        <div class="tool-item">
+          <h3>${tool.name}</h3>
+          <div class="desc">${tool.desc}</div>
+          <div class="btn-group">
+            ${tool.officialUrl ? `<a href="${tool.officialUrl}" target="_blank" class="btn-official">打开官网</a>` : ''}
+            ${tool.downloadUrl ? `<a href="${tool.downloadUrl}" class="btn-download" download>立即下载</a>` : ''}
+          </div>
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    el.innerHTML = html;
+  } catch (err) {
+    el.innerHTML = '<p style="text-align:center;color:#e74c3c;font-size:18px;">百宝箱加载失败，请稍后重试</p>';
+    console.error("百宝箱加载失败：", err);
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丐帮专属新闻编辑器</title>
+<!-- 换用国内稳定的富文本CDN，本地打开也能正常加载 -->
+<script src="https://cdn.jsdelivr.net/npm/wangeditor@4.7.15/dist/wangEditor.min.js"></script>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"微软雅黑",sans-serif}
+    body{background:#f5f5f5;padding:30px;max-width:1100px;margin:0 auto}
+    .card{background:white;padding:30px;border-radius:12px;box-shadow:0 2px 15px rgba(0,0,0,0.08)}
+    h1{margin-bottom:25px;color:#222}
+    .title-input{width:100%;padding:14px;font-size:17px;border:1px solid #ddd;border-radius:6px;margin-bottom:15px;outline:none}
+    .title-input:focus{border-color:#d4af37}
+    #editor-toolbar{border:1px solid #ddd;border-bottom:none;border-radius:6px 6px 0 0}
+    #editor-content{border:1px solid #ddd;border-radius:0 0 6px 6px;height:350px;margin-bottom:15px}
+    .btn-group{display:flex;gap:15px;margin-bottom:30px}
+    button{padding:12px 28px;border:none;border-radius:6px;cursor:pointer;font-size:16px;font-weight:bold}
+    .btn-save{background:#d4af37;color:#000}
+    .btn-clear{background:#666;color:white}
+    .news-list{margin-top:30px}
+    .news-item{background:#f9f9f9;padding:20px;border-radius:8px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center}
+    .news-item h3{color:#333}
+    .btn-del{background:#e74c3c;color:white;padding:8px 15px;font-size:14px}
+    .no-auth{text-align:center;padding:60px 20px}
+    .no-auth h2{color:#e74c3c;margin-bottom:15px}
+    .no-auth p{color:#666;margin-bottom:20px}
+    .no-auth a{display:inline-block;padding:12px 30px;background:#d4af37;color:#000;text-decoration:none;border-radius:6px;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="editorPage" style="display:none">
+<div class="card">
+    <h1>🏛️ 丐帮网站 · 专属新闻编辑器</h1>
+
+    <input type="text" class="title-input" id="newsTitle" placeholder="请输入新闻标题">
+    
+    <!-- 编辑器工具栏 + 内容区 -->
+    <div id="editor-toolbar"></div>
+    <div id="editor-content"></div>
+
+    <div class="btn-group">
+        <button class="btn-save" onclick="saveNews()">保存并同步到网站</button>
+        <button class="btn-clear" onclick="clearForm()">清空内容</button>
+    </div>
+
+    <h2 style="margin-bottom:15px">已发布新闻</h2>
+    <div class="news-list" id="newsList"></div>
+</div>
+</div>
+
+<div id="noAuth" class="no-auth" style="display:none">
+    <h2>⚠️ 无权限访问</h2>
+    <p>新闻编辑器仅限丐帮帮主使用，请先以管理员身份登录。</p>
+    <a href="index.html">前往登录</a>
+</div>
+
+<script>
+const API_URL = "";
+const ADMIN_EMAIL = "a13128283441@163.com";
+
+// 检查管理员权限
+function checkAuth() {
+    const loginUser = localStorage.getItem("loginUser");
+    if (loginUser === ADMIN_EMAIL) {
+        document.getElementById("editorPage").style.display = "block";
+        document.getElementById("noAuth").style.display = "none";
+        return true;
+    } else {
+        document.getElementById("editorPage").style.display = "none";
+        document.getElementById("noAuth").style.display = "block";
+        return false;
+    }
+}
+
+// 初始化富文本编辑器
+const E = window.wangEditor
+const editor = new E('#editor-toolbar', '#editor-content')
+// 配置编辑器功能
+editor.config.menus = [
+    'head', 'bold', 'italic', 'underline', 'fontSize', 'fontName',
+    'foreColor', 'backColor', 'link', 'image', 'video',
+    'justifyLeft', 'justifyCenter', 'justifyRight', 'undo', 'redo'
+]
+// 允许粘贴图片、本地上传图片
+editor.config.uploadImgShowBase64 = true
+
+// 页面加载
+window.onload = function() {
+    if (checkAuth()) {
+        editor.create();
+        renderNewsList();
+    }
+}
+
+// 保存新闻
+async function saveNews() {
+    const title = document.getElementById('newsTitle').value.trim()
+    const content = editor.txt.html()
+
+    if (!title || !content || content === '<p><br></p>') {
+        alert('请填写完整的新闻标题和内容！')
+        return
+    }
+
+    const adminEmail = localStorage.getItem("loginUser");
+    try {
+        const res = await fetch(`${API_URL}/api/admin/news`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ adminEmail, title, content })
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+            clearForm()
+            renderNewsList()
+            alert('✅ 发布成功！网站已自动同步！')
+        } else {
+            alert('❌ ' + result.msg)
+        }
+    } catch (err) {
+        alert('❌ 发布失败，请检查网络后重试')
+        console.error("新闻发布失败：", err)
+    }
+}
+
+// 渲染新闻列表
+async function renderNewsList() {
+    const newsListDom = document.getElementById('newsList')
+    try {
+        const res = await fetch(`${API_URL}/api/news`);
+        const result = await res.json();
+        const newsList = result.data || [];
+
+        if (newsList.length === 0) {
+            newsListDom.innerHTML = '<p style="color:#999;text-align:center">暂无发布的新闻，快去添加第一条吧！</p>'
+            return
+        }
+
+        newsListDom.innerHTML = newsList.map((item) => `
+            <div class="news-item">
+                <div>
+                    <h3>${item.title}</h3>
+                    <p style="color:#999;font-size:12px;margin-top:5px">发布时间：${item.time}</p>
+                </div>
+                <button class="btn-del" onclick="deleteNews(${item.id})">删除</button>
+            </div>
+        `).join('')
+    } catch (err) {
+        newsListDom.innerHTML = '<p style="color:#e74c3c;text-align:center">新闻列表加载失败</p>'
+        console.error("新闻列表加载失败：", err)
+    }
+}
+
+// 删除新闻
+async function deleteNews(id) {
+    if (!confirm('确定要删除这条新闻吗？删除后网站也会同步移除')) {
+        return
+    }
+    const adminEmail = localStorage.getItem("loginUser");
+    try {
+        const res = await fetch(`${API_URL}/api/admin/news/${id}?adminEmail=${encodeURIComponent(adminEmail)}`, {
+            method: "DELETE"
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+            renderNewsList()
+        } else {
+            alert('❌ ' + result.msg)
+        }
+    } catch (err) {
+        alert('❌ 删除失败，请检查网络后重试')
+        console.error("新闻删除失败：", err)
+    }
+}
+
+// 清空表单
+function clearForm() {
+    document.getElementById('newsTitle').value = ''
+    editor.txt.html('')
+}
+</script>
+</body>
+</html>
