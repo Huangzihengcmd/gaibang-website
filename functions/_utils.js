@@ -48,24 +48,24 @@ export async function parseBody(request) {
   }
 }
 
-// 用 Brevo 发送邮件（免费300封/天，可发任意邮箱）
-export async function sendEmail(env, to, subject, html) {
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+// 用 EmailJS REST API 发送邮件（用你已有的 EmailJS 账号，无需重新注册）
+export async function sendVerifyCodeEmail(to, code) {
+  const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
     method: "POST",
-    headers: {
-      "api-key": env.BREVO_API_KEY,
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      sender: { name: "丐帮", email: "a13128283441@163.com" },
-      to: [{ email: to }],
-      subject: subject,
-      htmlContent: html
+      service_id: "service_0j0n7sm",
+      template_id: "template_otjp8aq",
+      user_id: "stT8IBhAR8W_trFJ_",
+      template_params: {
+        email: to,
+        passcode: code
+      }
     })
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error("Brevo 发送失败：", err);
+    console.error("EmailJS 发送失败：", err);
     throw new Error("邮件发送失败");
   }
   return true;
