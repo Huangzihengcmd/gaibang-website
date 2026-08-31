@@ -1,14 +1,20 @@
+// 公共工具函数
+
+// 管理员邮箱
 export const ADMIN_EMAIL = "a13128283441@163.com";
 
+// 从 KV 获取 JSON 数据
 export async function getJSON(env, key, defaultValue) {
   const data = await env.GAIBANG_KV.get(key);
   return data ? JSON.parse(data) : defaultValue;
 }
 
+// 保存 JSON 数据到 KV
 export async function putJSON(env, key, value) {
   await env.GAIBANG_KV.put(key, JSON.stringify(value));
 }
 
+// 返回 JSON 响应
 export function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -21,6 +27,7 @@ export function jsonResponse(data, status = 200) {
   });
 }
 
+// 处理 OPTIONS 预检请求
 export function handleOptions() {
   return new Response(null, {
     status: 204,
@@ -32,14 +39,16 @@ export function handleOptions() {
   });
 }
 
+// 解析请求体
 export async function parseBody(request) {
   try {
     return await request.json();
-  } catch (e) {
+  } catch {
     return {};
   }
 }
 
+// 用 EmailJS REST API 发送邮件（用你已有的 EmailJS 账号，无需重新注册）
 export async function sendVerifyCodeEmail(to, code) {
   const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
     method: "POST",
@@ -55,9 +64,9 @@ export async function sendVerifyCodeEmail(to, code) {
     })
   });
   if (!res.ok) {
-    const errText = await res.text();
-    console.error("EmailJS send failed:", errText);
-    throw new Error("Email send failed");
+    const err = await res.text();
+    console.error("EmailJS 发送失败：", err);
+    throw new Error("邮件发送失败");
   }
   return true;
 }
