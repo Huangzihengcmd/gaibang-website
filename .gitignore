@@ -1,3 +1,6 @@
 node_modules/
 *.log
 .DS_Store
+*.png
+!logo.jpg
+!bg.jpg
