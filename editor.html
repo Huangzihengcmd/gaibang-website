@@ -160,7 +160,7 @@ async function deleteNews(id) {
     }
     const adminEmail = localStorage.getItem("loginUser");
     try {
-        const res = await fetch(`${API_URL}/api/admin/news/${id}?adminEmail=${encodeURIComponent(adminEmail)}`, {
+        const res = await fetch(`${API_URL}/api/admin/deleteNews?id=${id}&adminEmail=${encodeURIComponent(adminEmail)}`, {
             method: "DELETE"
         });
         const result = await res.json();
