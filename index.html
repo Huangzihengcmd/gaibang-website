@@ -169,12 +169,16 @@
   <div id="applyList" style="color:#fff"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 // ========== 后端接口地址 ==========
 // 前后端同域部署，使用相对路径即可
 const API_URL = "";
 
 const ADMIN_EMAIL = "a13128283441@163.com";
+
+// 初始化 EmailJS（浏览器端发送验证码邮件）
+emailjs.init({ publicKey: "stT8IBhAR8W_trFJ_" });
 
 function toast(msg, success=true){
   const t = document.getElementById("toast");
@@ -202,7 +206,7 @@ function checkLoginStatus() {
   }
 }
 
-// 发送验证码（调用后端真实发送）
+// 发送验证码（前端生成+EmailJS发送，后端存储校验）
 async function sendCode() {
   const emailInput = document.getElementById("reg-email");
   const email = emailInput.value.trim();
@@ -214,29 +218,40 @@ async function sendCode() {
   sendBtn.disabled = true;
   sendBtn.innerText = "发送中...";
   try {
+    // 前端生成6位数字验证码
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+
+    // 调用后端存储验证码
     const res = await fetch(`${API_URL}/api/sendCode`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email, code })
     });
     const result = await res.json();
-    if (result.code === 200) {
-      toast(result.msg);
-      let countDown = 60;
-      const timer = setInterval(()=>{
-        countDown--;
-        sendBtn.innerText = `${countDown}s 后重发`;
-        if(countDown <= 0){
-          clearInterval(timer);
-          sendBtn.disabled = false;
-          sendBtn.innerText = "发送验证码";
-        }
-      }, 1000);
-    } else {
+    if (result.code !== 200) {
       toast(result.msg, false);
       sendBtn.disabled = false;
       sendBtn.innerText = "发送验证码";
+      return;
     }
+
+    // 用 EmailJS 浏览器端发送验证码邮件
+    await emailjs.send("service_0j0n7sm", "template_otjp8aq", {
+      email: email,
+      passcode: code
+    });
+
+    toast("验证码已发送，请查收邮箱");
+    let countDown = 60;
+    const timer = setInterval(()=>{
+      countDown--;
+      sendBtn.innerText = `${countDown}s 后重发`;
+      if(countDown <= 0){
+        clearInterval(timer);
+        sendBtn.disabled = false;
+        sendBtn.innerText = "发送验证码";
+      }
+    }, 1000);
   } catch (err) {
     toast("验证码发送失败，请稍后重试", false);
     sendBtn.disabled = false;
