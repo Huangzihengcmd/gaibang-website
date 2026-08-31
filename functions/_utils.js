@@ -39,3 +39,25 @@ export async function parseBody(request) {
     return {};
   }
 }
+
+export async function sendVerifyCodeEmail(to, code) {
+  const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      service_id: "service_0j0n7sm",
+      template_id: "template_otjp8aq",
+      user_id: "stT8IBhAR8W_trFJ_",
+      template_params: {
+        email: to,
+        passcode: code
+      }
+    })
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("EmailJS send failed:", errText);
+    throw new Error("Email send failed");
+  }
+  return true;
+}
