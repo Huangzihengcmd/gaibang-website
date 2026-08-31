@@ -1,7 +1,7 @@
-import { jsonResponse, getJSON } from "../_utils.js";
+import { jsonResponse, parseBody } from "../_utils.js";
 
 export async function onRequest(context) {
-  const { env } = context;
-  const testData = await getJSON(env, "testKey", "default value");
-  return jsonResponse({ code: 200, data: testData });
+  const { request } = context;
+  const body = await parseBody(request);
+  return jsonResponse({ code: 200, data: body });
 }

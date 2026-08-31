@@ -31,3 +31,11 @@ export function handleOptions() {
     }
   });
 }
+
+export async function parseBody(request) {
+  try {
+    return await request.json();
+  } catch (e) {
+    return {};
+  }
+}
