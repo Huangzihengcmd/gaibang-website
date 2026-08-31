@@ -48,24 +48,24 @@ export async function parseBody(request) {
   }
 }
 
-// 用 Resend 发送邮件
+// 用 Brevo 发送邮件（免费300封/天，可发任意邮箱）
 export async function sendEmail(env, to, subject, html) {
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+      "api-key": env.BREVO_API_KEY,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      from: "丐帮 <onboarding@resend.dev>",
-      to: to,
+      sender: { name: "丐帮", email: "a13128283441@163.com" },
+      to: [{ email: to }],
       subject: subject,
-      html: html
+      htmlContent: html
     })
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error("Resend 发送失败：", err);
+    console.error("Brevo 发送失败：", err);
     throw new Error("邮件发送失败");
   }
   return true;
