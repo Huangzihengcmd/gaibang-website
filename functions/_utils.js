@@ -43,7 +43,7 @@ export function handleOptions() {
 export async function parseBody(request) {
   try {
     return await request.json();
-  } catch {
+  } catch (e) {
     return {};
   }
 }
@@ -64,8 +64,8 @@ export async function sendVerifyCodeEmail(to, code) {
     })
   });
   if (!res.ok) {
-    const err = await res.text();
-    console.error("EmailJS 发送失败：", err);
+    const errText = await res.text();
+    console.error("EmailJS 发送失败：", errText);
     throw new Error("邮件发送失败");
   }
   return true;
