@@ -1,5 +1,7 @@
-import { jsonResponse, ADMIN_EMAIL } from "../_utils.js";
+import { jsonResponse, getJSON } from "../_utils.js";
 
 export async function onRequest(context) {
-  return jsonResponse({ code: 200, data: ADMIN_EMAIL });
+  const { env } = context;
+  const testData = await getJSON(env, "testKey", "default value");
+  return jsonResponse({ code: 200, data: testData });
 }

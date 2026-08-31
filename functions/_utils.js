@@ -1,5 +1,14 @@
 export const ADMIN_EMAIL = "a13128283441@163.com";
 
+export async function getJSON(env, key, defaultValue) {
+  const data = await env.GAIBANG_KV.get(key);
+  return data ? JSON.parse(data) : defaultValue;
+}
+
+export async function putJSON(env, key, value) {
+  await env.GAIBANG_KV.put(key, JSON.stringify(value));
+}
+
 export function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
