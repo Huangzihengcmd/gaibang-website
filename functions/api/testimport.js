@@ -1,7 +1,5 @@
-import { TEST_CONST } from "../_utils.js";
+import { jsonResponse, ADMIN_EMAIL } from "../_utils.js";
 
 export async function onRequest(context) {
-  return new Response(JSON.stringify({ code: 200, data: TEST_CONST }), {
-    headers: { "Content-Type": "application/json" }
-  });
+  return jsonResponse({ code: 200, data: ADMIN_EMAIL });
 }
