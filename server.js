@@ -22,14 +22,14 @@ const ADMIN_EMAIL = "a13128283441@163.com";
 // 验证码临时存储（内存，key=邮箱，value={code, expireAt}）
 const verifyCodes = new Map();
 
-// 163 邮箱 SMTP 配置
+// 163 邮箱 SMTP 配置（授权码从环境变量 SMTP_PASS 读取）
 const transporter = nodemailer.createTransport({
   host: "smtp.163.com",
   port: 465,
   secure: true,
   auth: {
     user: "a13128283441@163.com",
-    pass: "XTrtR3Bzg4sWQzG8"
+    pass: process.env.SMTP_PASS
   }
 });
 
