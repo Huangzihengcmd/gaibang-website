@@ -4,4 +4,4 @@ Disallow: /functions/
 Disallow: /node_modules/
 Disallow: /db.json
 
-Sitemap: /sitemap.xml
+Sitemap: https://gaibang.pages.dev/sitemap.xml
