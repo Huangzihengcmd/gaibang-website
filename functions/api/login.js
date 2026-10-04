@@ -1,10 +1,14 @@
-import { getJSON, jsonResponse, handleOptions, parseBody } from "../_utils.js";
+import { getJSON, jsonResponse, handleOptions, parseBody, ensureAdmin } from "../_utils.js";
 
 export async function onRequest(context) {
   if (context.request.method === "OPTIONS") return handleOptions();
   if (context.request.method !== "POST") return jsonResponse({ code: 405, msg: "方法不允许" }, 405);
 
   const { request, env } = context;
+
+  // 首次登录时自动创建管理员账号
+  await ensureAdmin(env);
+
   const body = await parseBody(request);
   const { email, password } = body;
 

@@ -14,6 +14,23 @@ export async function putJSON(env, key, value) {
   await env.GAIBANG_KV.put(key, JSON.stringify(value));
 }
 
+// 确保管理员账号存在（首次登录时自动创建）
+export async function ensureAdmin(env) {
+  try {
+    const users = await getJSON(env, "userList", []);
+    if (!users.some(u => u.email === ADMIN_EMAIL)) {
+      users.push({
+        email: ADMIN_EMAIL,
+        password: "12345678",
+        createTime: new Date().toLocaleString()
+      });
+      await putJSON(env, "userList", users);
+    }
+  } catch (err) {
+    console.error("管理员初始化失败：", err);
+  }
+}
+
 // 返回 JSON 响应
 export function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
