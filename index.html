@@ -174,7 +174,7 @@
 // 前后端同域部署，使用相对路径即可
 const API_URL = "";
 
-const ADMIN_EMAIL = "a13128283441@163.com";
+const ADMIN_EMAIL = "njzj_2580@qq.com";
 
 function toast(msg, success=true){
   const t = document.getElementById("toast");
@@ -323,7 +323,7 @@ async function loadMemberStatus() {
 
   // 管理员
   if (loginUser === ADMIN_EMAIL) {
-    tipDom.innerText = "您是丐帮帮主";
+    tipDom.innerText = "管理员";
     tipDom.style.display = "block";
     joinBtnDom.style.display = "none";
     adminPanel.style.display = "block";
@@ -339,7 +339,7 @@ async function loadMemberStatus() {
     tipDom.style.display = "none";
     joinBtnDom.style.display = "inline-block";
   } else if (applyInfo.status === "pending") {
-    tipDom.innerText = "您的入帮申请已提交，待帮主审核";
+    tipDom.innerText = "您的入帮申请已提交，待管理员审核";
     tipDom.style.display = "block";
     joinBtnDom.style.display = "none";
   } else if (applyInfo.status === "pass") {

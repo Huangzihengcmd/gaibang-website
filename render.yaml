@@ -4,5 +4,5 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install
-    startCommand: node server.js
+    startCommand: node server.cjs
     healthCheckPath: /

@@ -17,18 +17,18 @@ app.use(express.static(__dirname));
 const db = new JsonDB(new Config("db", true, false, "/"));
 
 // 管理员邮箱
-const ADMIN_EMAIL = "a13128283441@163.com";
+const ADMIN_EMAIL = "njzj_2580@qq.com";
 
 // 验证码临时存储（内存，key=邮箱，value={code, expireAt}）
 const verifyCodes = new Map();
 
-// 163 邮箱 SMTP 配置（授权码从环境变量 SMTP_PASS 读取）
+// QQ 邮箱 SMTP 配置（授权码从环境变量 SMTP_PASS 读取）
 const transporter = nodemailer.createTransport({
-  host: "smtp.163.com",
+  host: "smtp.qq.com",
   port: 465,
   secure: true,
   auth: {
-    user: "a13128283441@163.com",
+    user: "njzj_2580@qq.com",
     pass: process.env.SMTP_PASS
   }
 });
@@ -39,6 +39,22 @@ async function initDB() {
   try { await db.getData("/applyList"); } catch { await db.push("/applyList", []); }
   try { await db.getData("/newsList"); } catch { await db.push("/newsList", []); }
   try { await db.getData("/boxData"); } catch { await db.push("/boxData", []); }
+
+  // 首次启动自动创建管理员账号（仅当不存在时）
+  try {
+    const users = await db.getData("/userList");
+    if (!users.some(u => u.email === ADMIN_EMAIL)) {
+      users.push({
+        email: ADMIN_EMAIL,
+        password: process.env.ADMIN_PASSWORD || "12345678",
+        createTime: new Date().toLocaleString()
+      });
+      await db.push("/userList", users, true);
+      console.log("已自动创建管理员账号：" + ADMIN_EMAIL);
+    }
+  } catch (err) {
+    console.error("管理员初始化失败：", err);
+  }
 }
 initDB();
 
@@ -54,7 +70,7 @@ app.post("/api/sendCode", async (req, res) => {
 
   try {
     await transporter.sendMail({
-      from: '"丐帮" <a13128283441@163.com>',
+      from: '"丐帮" <njzj_2580@qq.com>',
       to: email,
       subject: "【丐帮】注册验证码",
       html: `
@@ -66,7 +82,7 @@ app.post("/api/sendCode", async (req, res) => {
             <span style="display:inline-block;font-size:36px;font-weight:bold;letter-spacing:8px;color:#ffd700;background:#222;padding:15px 40px;border-radius:8px;border:1px solid #ffd700;">${code}</span>
           </div>
           <p style="font-size:14px;color:#999;line-height:1.6;">验证码有效期为10分钟，请勿泄露给他人。<br>如非本人操作，请忽略此邮件。</p>
-          <p style="text-align:center;color:#666;font-size:12px;margin-top:30px;">© 2026 丐帮 | 版权所有</p>
+          <p style="text-align:center;color:#666;font-size:12px;margin-top:30px;">© 2026 丐帮 | 版权所有 · 发件邮箱 njzj_2580@qq.com</p>
         </div>
       `
     });

@@ -1,7 +1,7 @@
 // 公共工具函数
 
 // 管理员邮箱
-export const ADMIN_EMAIL = "a13128283441@163.com";
+export const ADMIN_EMAIL = "njzj_2580@qq.com";
 
 // 从 KV 获取 JSON 数据
 export async function getJSON(env, key, defaultValue) {
@@ -48,7 +48,9 @@ export async function parseBody(request) {
   }
 }
 
-// 用 EmailJS REST API 发送邮件（用你已有的 EmailJS 账号，无需重新注册）
+// 用 QQ 邮箱 SMTP 发送邮件（通过 Cloudflare Email Workers 或本地中转）
+// 注意：Cloudflare Workers 无法直接 SMTP，需借助第三方服务
+// 这里保留 EmailJS 作为发送通道，但发件人身份显示为丐帮管理员邮箱
 export async function sendVerifyCodeEmail(to, code) {
   const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
     method: "POST",
