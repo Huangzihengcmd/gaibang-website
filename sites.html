@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="丐帮分舵——丐帮旗下各站点的入口导航，可在此切换到丐帮的其他网站。">
+<meta name="keywords" content="丐帮,丐帮分舵,站点导航,丐帮旗下网站">
+<title>丐帮 - 分舵 | 站点导航</title>
+<link rel="icon" href="logo.jpg">
+<link rel="stylesheet" href="style.css">
+<style>
+header {
+  text-align: center;
+  position: relative;
+  padding: 15px 0;
+}
+.site-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+header h1 {
+  margin: 0 auto;
+  position: relative;
+  z-index: 5;
+  color: #fff;
+}
+.container {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+.page-title {
+  text-align: center;
+  color: #ffd700;
+  margin-bottom: 12px;
+  font-size: 30px;
+}
+.page-sub {
+  text-align: center;
+  color: #aaa;
+  margin-bottom: 35px;
+  font-size: 14px;
+}
+.site-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+.site-card {
+  display: block;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 14px;
+  padding: 24px;
+  color: #fff;
+  text-decoration: none;
+  transition: 0.3s;
+}
+.site-card:hover {
+  transform: translateY(-5px);
+  background: rgba(0,0,0,0.8);
+  border-color: #ffd700;
+}
+.site-card h3 {
+  color: #ffd700;
+  font-size: 19px;
+  margin: 0 0 10px;
+}
+.site-card .desc {
+  color: #eee;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.site-card .tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #ffd700;
+  color: #000;
+  font-weight: bold;
+}
+.site-card .tag.soon {
+  background: #555;
+  color: #ccc;
+}
+.back {
+  text-align: center;
+  margin-top: 60px;
+}
+.back a {
+  color: #ffd700;
+  font-size: 20px;
+  font-weight: bold;
+  text-decoration: none;
+  padding: 14px 30px;
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  display: inline-block;
+}
+</style>
+</head>
+
+<body>
+<header>
+  <img src="logo.jpg" class="site-logo" alt="丐帮Logo">
+  <h1 class="floating">丐帮</h1>
+  <nav>
+      <ul>
+          <li><a href="index.html">首页</a></li>
+          <li><a href="#">帮派介绍</a></li>
+          <li><a href="news.html">新闻</a></li>
+          <li><a href="sites.html">分舵</a></li>
+          <li><a href="#">联系</a></li>
+      </ul>
+  </nav>
+</header>
+
+<div class="container">
+  <h2 class="page-title">🧭 丐帮分舵</h2>
+  <p class="page-sub">丐帮旗下各站点入口，可在此切换</p>
+  <div class="site-grid" id="siteGrid"></div>
+
+  <div class="back">
+    <a href="index.html">← 返回首页</a>
+  </div>
+</div>
+
+<script>
+// ===== 站点列表：以后做新网站，照着下面的格式加一行即可 =====
+const SITES = [
+  {
+    name: "丐帮主站",
+    url: "https://gaibang.pages.dev",
+    desc: "丐帮官方网站：江湖新闻、入帮申请、帮派动态。",
+    current: true
+  }
+  // 新增网站示例（去掉前面的 // 生效）：
+  // { name: "新网站名", url: "https://xxx.pages.dev", desc: "一句话介绍这个站是干什么的。", current: false },
+  // { name: "待建站点", url: "", desc: "正在筹建中，敬请期待。", soon: true },
+];
+
+function renderSites() {
+  const grid = document.getElementById('siteGrid');
+  if (!SITES.length) {
+    grid.innerHTML = '<p style="text-align:center;color:#fff;">暂无分舵</p>';
+    return;
+  }
+  grid.innerHTML = SITES.map(s => {
+    const tag = s.current
+      ? '<span class="tag">当前所在</span>'
+      : (s.soon ? '<span class="tag soon">筹建中</span>' : '<span class="tag soon">前往</span>');
+    const attrs = s.url && !s.soon ? `href="${s.url}"` : 'href="javascript:void(0)"';
+    return `
+      <a class="site-card" ${attrs}>
+        <h3>${s.name}</h3>
+        <div class="desc">${s.desc}</div>
+        ${tag}
+      </a>`;
+  }).join('');
+}
+
+window.onload = renderSites;
+</script>
+
+</body>
+</html>

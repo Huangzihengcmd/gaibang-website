@@ -1,0 +1,16 @@
+[00:20:08] attempt 1: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}
+HTTP=429
+[00:25:10] attempt 2: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}
+HTTP=429
+[00:30:12] attempt 3: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}
+HTTP=429
+[00:35:14] attempt 4: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}
+HTTP=429
+[00:40:16] attempt 5: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}
+HTTP=429
+[00:45:19] attempt 6: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}
+HTTP=429
+[10-05 07:34] attempt 1: {"errorCode":"TooManyRequests","message":"We're sorry, but you have sent too many requests to us recently.","details":null}HTTP=429
+[10-05 08:04] attempt 2: HTTP=202
+[10-05 08:35] attempt 3: HTTP=200
+[10-05 08:35] SUCCESS - 已提交给 IndexNow（Bing/微软）
