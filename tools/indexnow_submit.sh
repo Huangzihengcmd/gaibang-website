@@ -13,6 +13,6 @@ curl -s -X POST "https://api.indexnow.org/indexnow" \
       \"https://$HOST/\",
       \"https://$HOST/index.html\",
       \"https://$HOST/news.html\",
-      \"https://$HOST/box.html\"
+      \"https://$HOST/sites.html\"
     ]
   }" -w "\nHTTP=%{http_code}\n"
