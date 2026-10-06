@@ -91,8 +91,12 @@ for f in upsert:
         print("upsert FAIL %s -> %s" % (f, blob))
 
 # 4. 删除（仅删远程确实存在的）
-delete = ["box.html", "box_editor.html", "新建文本文档.txt", "start_https_silent.bat",
-          "indexnow_submit.sh", "indexnow_retry.sh", "push_retry.sh", "indexnow_result.log"]
+delete = ["新建文本文档.txt", "start_https_silent.bat",
+          "indexnow_submit.sh", "indexnow_retry.sh", "push_retry.sh", "indexnow_result.log",
+          # 早期手工复制的重名作品，已被脚本生成的规范命名取代
+          "aibench/works/seed-billiards.html", "aibench/works/seed-maze.html",
+          "aibench/works/seed-qingming.html", "aibench/works/seed-watch.html",
+          "aibench/works/qwen-watch.html"]
 for f in delete:
     if f in remote_paths:
         changes.append({"path": f, "mode": "100644", "type": "blob", "sha": None})
