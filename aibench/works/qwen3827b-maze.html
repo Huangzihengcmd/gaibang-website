@@ -561,3 +561,318 @@ document.getElementById('startBtn').addEventListener('click', () => {
   startLevel(0, false);
   game.startTime = performance.now();
 });
+
+/* ========== 物理与碰撞（胶囊 vs AABB，轴分离推离） ========== */
+function collide() {
+  const w = game.whale, R = 0.85;
+  const L = LEVELS[game.level];
+  const hx = (L.nx / 2 - 0.4) * CELL, hz = (L.nz / 2 - 0.4) * CELL, hy = (L.ny / 2 - 0.6) * CELL;
+  // 边界
+  if (w.x < -hx + R) { w.x = -hx + R; w.vx *= -0.3; }
+  if (w.x > hx - R) { w.x = hx - R; w.vx *= -0.3; }
+  if (w.z < -hz + R) { w.z = -hz + R; w.vz *= -0.3; }
+  if (w.z > hz - R) { w.z = hz - R; w.vz *= -0.3; }
+  if (w.y < -hy + R) { w.y = -hy + R; w.vy *= -0.3; }
+  if (w.y > hy - R) { w.y = hy - R; w.vy *= -0.3; }
+  // 墙体（只检测邻近格）
+  const gcx = Math.round(w.x / CELL + L.nx / 2 - 0.5), gcy = Math.round(w.y / CELL + L.ny / 2 - 0.5), gcz = Math.round(w.z / CELL + L.nz / 2 - 0.5);
+  let bumped = false;
+  for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = gcx + dx, y = gcy + dy, z = gcz + dz;
+    if (x < 0 || y < 0 || z < 0 || x >= L.nx || y >= L.ny || z >= L.nz) continue;
+    if (!game.solid[x + L.nx * (y + L.ny * z)]) continue;
+    const cx = (x - L.nx / 2 + 0.5) * CELL, cy = (y - L.ny / 2 + 0.5) * CELL, cz = (z - L.nz / 2 + 0.5) * CELL;
+    const s = CELL * 0.98;
+    // 最近点
+    const px = Math.max(cx - s / 2, Math.min(w.x, cx + s / 2));
+    const py = Math.max(cy - WALL_H / 2 - 0.4, Math.min(w.y, cy + WALL_H / 2 + 0.4));
+    const pz = Math.max(cz - s / 2, Math.min(w.z, cz + s / 2));
+    let ddx = w.x - px, ddy = w.y - py, ddz = w.z - pz;
+    let d2 = ddx * ddx + ddy * ddy + ddz * ddz;
+    if (d2 >= R * R) continue;
+    let d = Math.sqrt(d2) || 0.0001;
+    if (d < 0.001) { ddx = w.x - cx; ddy = 0; ddz = w.z - cz; d = Math.hypot(ddx, ddz) || 0.001; }
+    const push = (R - d) / d;
+    w.x += ddx * push; w.y += ddy * push * 0.6; w.z += ddz * push;
+    const dot = w.vx * ddx + w.vy * ddy + w.vz * ddz;
+    if (dot < 0) { w.vx -= ddx / d * dot * 1.4; w.vy -= ddy / d * dot * 1.4; w.vz -= ddz / d * dot * 1.4; bumped = true; }
+  }
+  if (bumped && game.shake < 0.12) { game.shake = 0.35; sndBump(); }
+}
+function updateWhale(dt) {
+  const w = game.whale;
+  if (!game.running || game.won) { w.vx *= 0.96; w.vy *= 0.96; w.vz *= 0.96; w.x += w.vx * dt; w.y += w.vy * dt; w.z += w.vz * dt; return; }
+  // 转向
+  const turn = (keys['a'] || keys['arrowleft'] || keys['vleft'] ? 1 : 0) - (keys['d'] || keys['arrowright'] || keys['vright'] ? 1 : 0);
+  const fwd = (keys['w'] || keys['arrowup'] || keys['vup'] ? 1 : 0) - (keys['s'] || keys['arrowdown'] || keys['vdown'] ? 0.6 : 0);
+  const updown = (keys['vup'] || keys['arrowup'] ? 1 : 0) - (keys['vdown'] || keys['arrowdown'] ? 1 : 0);
+  const sp = Math.hypot(w.vx, w.vy, w.vz);
+  if (sp > 0.4) w.yaw += turn * 1.9 * dt * Math.min(1, sp / 5 + 0.35);
+  w.boost = !!(keys['shift']) && fwd > 0;
+  // 推力
+  const acc = w.boost ? 26 : 13;
+  w.vx += Math.sin(w.yaw) * fwd * acc * dt;
+  w.vz -= Math.cos(w.yaw) * fwd * acc * dt;
+  // 垂直（触屏）
+  if (updown) w.vy += updown * 9 * dt;
+  // 水中阻尼
+  const drag = Math.pow(w.boost ? 0.6 : 0.45, dt);
+  w.vx *= drag; w.vy *= drag; w.vz *= drag;
+  // 限速
+  const v = Math.hypot(w.vx, w.vy, w.vz), vmax = w.boost ? 13 : 7;
+  if (v > vmax) { const k = vmax / v; w.vx *= k; w.vy *= k; w.vz *= k; }
+  w.x += w.vx * dt; w.y += w.vy * dt; w.z += w.vz * dt;
+  collide();
+  // 出口判定
+  const ex = cellCenter(game.exit.x, game.exit.y, game.exit.z);
+  if (Math.hypot(w.x - ex.x, w.y - ex.y, w.z - ex.z) < 2.2) onWin();
+  return Math.hypot(w.x - ex.x, w.y - ex.y, w.z - ex.z);
+}
+
+/* ========== 场景渲染（深度排序 + 雾效） ========== */
+const FOG = { near: 6, far: 95, rgb: [6, 16, 34] };
+function fogAlpha(z) {
+  const t = Math.max(0, Math.min(1, (z - FOG.near) / (FOG.far - FOG.near)));
+  return 1 - t * t; // 0..1 不透明度
+}
+function drawScene(t) {
+  const w = game.whale;
+  // 背景：深海径向渐变
+  const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.75);
+  g.addColorStop(0, '#07213d');
+  g.addColorStop(0.45, '#041225');
+  g.addColorStop(1, '#010409');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // 顶部透光（出口方向）
+  const eg = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  eg.addColorStop(0, 'rgba(40,140,190,0.18)');
+  eg.addColorStop(1, 'rgba(40,140,190,0)');
+  ctx.fillStyle = eg;
+  ctx.fillRect(0, 0, W, H * 0.5);
+  // 收集可绘对象并排序
+  const items = [];
+  const L = LEVELS[game.level];
+  // 墙体（霓虹棱柱：面片 + 顶边发光线）
+  for (const b of game.boxes) {
+    const pc = project({ x: b.x, y: b.y, z: b.z });
+    if (!pc || pc.z > FOG.far) continue;
+    // 视锥粗裁
+    const hw = pc.scale * b.hx, hh = pc.scale * b.hy;
+    if (pc.x < -hw - 40 || pc.x > W + hw + 40 || pc.y < -hh - 40 || pc.y > H + hh + 40) continue;
+    // 8 个角
+    const corners = [
+      [-b.hx, -b.hy - 0.4, -b.hz], [b.hx, -b.hy - 0.4, -b.hz], [b.hx, -b.hy - 0.4, b.hz], [-b.hx, -b.hy - 0.4, b.hz],
+      [-b.hx, b.hy + 0.4, -b.hz], [b.hx, b.hy + 0.4, -b.hz], [b.hx, b.hy + 0.4, b.hz], [-b.hx, b.hy + 0.4, b.hz],
+    ].map(c => project({ x: b.x + c[0], y: b.y + c[1], z: b.z + c[2] }));
+    // 可见面：底面 0-1-2-3，侧面 0-1-5-4, 1-2-6-5, 2-3-7-6, 3-0-4-7
+    const faces = [
+      { i: [0, 1, 5, 4], n: [0, 0, -1] },
+      { i: [1, 2, 6, 5], n: [1, 0, 0] },
+      { i: [2, 3, 7, 6], n: [0, 0, 1] },
+      { i: [3, 0, 4, 7], n: [-1, 0, 0] },
+      { i: [4, 5, 6, 7], n: [0, 1, 0] },
+    ];
+    const view = toCam({ x: b.x, y: b.y, z: b.z });
+    for (const f of faces) {
+      // 背面剔除（面法向 vs 视图方向）
+      let nx = f.n[0], ny = f.n[1], nz = f.n[2];
+      const vn = { x: nx, y: ny, z: nz };
+      const toWall = { x: view.x * 0 + -view.x, y: 0, z: -view.z };
+      // 简化：用面中心与相机点积
+      const a = corners[f.i[0]], b2 = corners[f.i[2]];
+      if (!a || !b2) continue;
+      const cxx = (a.x + b2.x) / 2, cyy = (a.y + b2.y) / 2;
+      const p1 = corners[f.i[0]], p2 = corners[f.i[1]], p3 = corners[f.i[2]];
+      if (!p1 || !p2 || !p3) continue;
+      const ex1 = p2.x - p1.x, ey1 = p2.y - p1.y, ex2 = p3.x - p1.x, ey2 = p3.y - p1.y;
+      const cross = ex1 * ey2 - ey1 * ex2;
+      const facing = f.n[2] > 0 ? cross > 0 : cross < 0;
+      if (!facing) continue;
+      const alpha = fogAlpha(view.z);
+      const shade = 0.35 + 0.65 * Math.abs((f.n[0] * Math.sin(cam.yaw) + f.n[2] * -Math.cos(cam.yaw)));
+      const hue = (b.x * 7 + b.z * 13 + 200) % 360;
+      items.push({ z: view.z, fn: () => {
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        for (let k = 1; k < 4; k++) ctx.lineTo(corners[f.i[k]].x, corners[f.i[k]].y);
+        ctx.closePath();
+        ctx.fillStyle = `hsla(${hue},55%,${16 * shade + 6}%,${alpha * 0.82})`;
+        ctx.fill();
+        ctx.strokeStyle = `hsla(${(hue + 60) % 360},95%,62%,${alpha * 0.5})`;
+        ctx.lineWidth = Math.max(0.5, pc.scale * 0.02);
+        ctx.stroke();
+      } });
+    }
+  }
+  // 出口之光
+  const ex = cellCenter(game.exit.x, game.exit.y, game.exit.z);
+  {
+    const p = project(ex);
+    if (p && p.z < FOG.far) {
+      const a = fogAlpha(p.z);
+      const r = p.scale * 4.2 * (1 + Math.sin(t * 2.4) * 0.12);
+      items.push({ z: p.z - 0.1, fn: () => {
+        const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        gr.addColorStop(0, `rgba(255,250,220,${0.95 * a})`);
+        gr.addColorStop(0.25, `rgba(140,255,230,${0.5 * a})`);
+        gr.addColorStop(0.6, `rgba(0,200,180,${0.16 * a})`);
+        gr.addColorStop(1, 'rgba(0,180,160,0)');
+        ctx.fillStyle = gr;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+        // 光柱
+        ctx.strokeStyle = `rgba(180,255,235,${0.5 * a})`;
+        ctx.lineWidth = Math.max(2, p.scale * 0.12 * (1 + Math.sin(t * 3) * 0.3));
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - p.scale * 12); ctx.stroke();
+        // 旋转符文环
+        ctx.strokeStyle = `rgba(120,255,220,${0.7 * a})`;
+        ctx.lineWidth = Math.max(1, p.scale * 0.05);
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.scale * 2.4, p.scale * 0.7, Math.sin(t * 0.8) * 0.3, 0, 7);
+        ctx.stroke();
+        for (let k = 0; k < 5; k++) {
+          const an = t * 1.5 + k * Math.PI * 2 / 5;
+          ctx.fillStyle = `rgba(200,255,235,${a})`;
+          ctx.beginPath();
+          ctx.arc(p.x + Math.cos(an) * p.scale * 2.4, p.y + Math.sin(an) * p.scale * 0.7 * Math.sin(t * 0.8) * 0.3, Math.max(1, p.scale * 0.06), 0, 7);
+          ctx.fill();
+        }
+      } });
+    }
+  }
+  // 水母
+  for (const j of game.jellies) {
+    const v = toCam({ x: j.x, y: j.y, z: j.z });
+    if (v.z < 0.8 || v.z > FOG.far) continue;
+    items.push({ z: v.z, fn: () => drawJelly(j, t) });
+  }
+  // 蓝鲸
+  {
+    const v = toCam({ x: w.x, y: w.y, z: w.z });
+    items.push({ z: v.z, fn: () => drawWhale(t) });
+  }
+  // 粒子（按各自深度插入）
+  for (const s of game.streaks) {
+    const v = toCam(s);
+    if (v.z < 0.5 || v.z > FOG.far) continue;
+    items.push({ z: v.z, fn: () => {
+      const p = project(s); if (!p) return;
+      const al = (1 - s.life / s.max) * 0.8 * fogAlpha(p.z);
+      ctx.strokeStyle = `rgba(120,220,255,${al})`;
+      ctx.lineWidth = Math.max(0.6, p.scale * 0.04);
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - s.vx * p.scale * 0.18, p.y + s.vy * p.scale * 0.18); ctx.stroke();
+    } });
+  }
+  for (const b of game.bubbles) {
+    const v = toCam(b);
+    if (v.z < 0.5 || v.z > FOG.far) continue;
+    items.push({ z: v.z, fn: () => {
+      const p = project(b); if (!p) return;
+      const r = Math.max(0.8, p.scale * b.r);
+      const al = fogAlpha(p.z);
+      ctx.strokeStyle = `rgba(170,235,255,${0.65 * al * (1 - b.life / 3.2)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.stroke();
+    } });
+  }
+  // 水雾
+  for (const d of game.dust) {
+    const v = toCam({ x: game.whale.x + d.x * 0.5, y: game.whale.y + d.y * 0.5, z: game.whale.z + d.z * 0.5 });
+    if (v.z < 1 || v.z > 90) continue;
+    items.push({ z: v.z, fn: () => {
+      const p = project({ x: game.whale.x + d.x * 0.5, y: game.whale.y + d.y * 0.5, z: game.whale.z + d.z * 0.5 });
+      if (!p) return;
+      const r = Math.max(0.5, p.scale * 0.03);
+      ctx.globalAlpha = Math.min(0.5, 12 / p.z);
+      ctx.fillStyle = 'rgba(140,210,255,1)';
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+    } });
+  }
+  items.sort((a, b) => b.z - a.z);
+  for (const it of items) it.fn();
+  // 距离指示（HUD 用）
+  const ed = Math.hypot(w.x - ex.x, w.y - ex.y, w.z - ex.z);
+  document.getElementById('dist').textContent = Math.max(0, Math.round(ed));
+  // 指向出口的光标箭头（出口不可见时）
+  const ep = project(ex);
+  if (game.running && !game.won && (!ep || ep.z > 40)) {
+    const dir = toCam(ex);
+    const ang = Math.atan2(dir.x, dir.z);
+    const ca = Math.atan2(Math.sin(ang - 0) , Math.cos(ang));
+    // 屏幕边缘提示
+    const dx = Math.sin(ang - Math.PI) * -1, dz = Math.cos(ang);
+    const sx2 = W / 2 + Math.sin(ang) * Math.min(W, H) * 0.42;
+    const sy2 = H / 2 - Math.cos(ang) * Math.min(W, H) * 0.3;
+    const cx2 = Math.max(40, Math.min(W - 40, sx2)), cy2 = Math.max(40, Math.min(H - 40, sy2));
+    const a2 = 0.5 + Math.sin(t * 4) * 0.3;
+    ctx.save();
+    ctx.translate(cx2, cy2);
+    ctx.rotate(Math.atan2(sy2 - H / 2, sx2 - W / 2) + Math.PI / 2);
+    ctx.fillStyle = `rgba(120,255,220,${a2})`;
+    ctx.shadowColor = 'rgba(0,255,200,0.8)'; ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(0, -14); ctx.lineTo(10, 8); ctx.lineTo(0, 3); ctx.lineTo(-10, 8);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  }
+  // 冲刺速度线
+  if (w.boost && Math.hypot(w.vx, w.vy, w.vz) > 8) {
+    ctx.strokeStyle = 'rgba(160,230,255,0.14)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 14; i++) {
+      const an = Math.random() * 7, r0 = Math.min(W, H) * (0.35 + Math.random() * 0.3), ln = 30 + Math.random() * 90;
+      const x0 = W / 2 + Math.cos(an) * r0, y0 = H / 2 + Math.sin(an) * r0;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x0 + Math.cos(an) * ln, y0 + Math.sin(an) * ln);
+      ctx.stroke();
+    }
+  }
+  // 暗角
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.36, W / 2, H / 2, Math.max(W, H) * 0.72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,2,8,0.6)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+/* ========== 主循环 ========== */
+let lastT = performance.now(), hudTimer = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = (now - lastT) / 1000;
+  lastT = now;
+  if (dt > 0.05) dt = 0.05;
+  const t = now / 1000;
+  // 相机跟随（平滑）
+  const sp = Math.hypot(game.whale.vx, game.whale.vy, game.whale.vz);
+  cam.yaw += ((game.whale.yaw + Math.PI) - cam.yaw) * Math.min(1, dt * 4);
+  cam.pitch += ((-0.12 - (sp * 0.004)) - cam.pitch) * Math.min(1, dt * 3);
+  if (game.shake > 0) {
+    game.shake = Math.max(0, game.shake - dt);
+    ctx.save();
+    ctx.translate((Math.random() - 0.5) * game.shake * 14, (Math.random() - 0.5) * game.shake * 14);
+  }
+  if (game.running) {
+    if (!game.won) game.elapsed += dt * 1000;
+    updateWhale(dt);
+    updateParticles(dt, t);
+    drawScene(t);
+    if (game.shake > 0) ctx.restore();
+    // HUD 计时
+    hudTimer += dt;
+    if (hudTimer > 0.25) {
+      hudTimer = 0;
+      document.getElementById('time').textContent = fmtTime(game.elapsed);
+    }
+  } else {
+    // 待机画面：缓慢旋转的深海
+    ctx.clearRect(0, 0, W, H);
+  }
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
