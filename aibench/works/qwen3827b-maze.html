@@ -675,20 +675,11 @@ function drawScene(t) {
     ];
     const view = toCam({ x: b.x, y: b.y, z: b.z });
     for (const f of faces) {
-      // 背面剔除（面法向 vs 视图方向）
-      let nx = f.n[0], ny = f.n[1], nz = f.n[2];
-      const vn = { x: nx, y: ny, z: nz };
-      const toWall = { x: view.x * 0 + -view.x, y: 0, z: -view.z };
-      // 简化：用面中心与相机点积
-      const a = corners[f.i[0]], b2 = corners[f.i[2]];
-      if (!a || !b2) continue;
-      const cxx = (a.x + b2.x) / 2, cyy = (a.y + b2.y) / 2;
-      const p1 = corners[f.i[0]], p2 = corners[f.i[1]], p3 = corners[f.i[2]];
-      if (!p1 || !p2 || !p3) continue;
-      const ex1 = p2.x - p1.x, ey1 = p2.y - p1.y, ex2 = p3.x - p1.x, ey2 = p3.y - p1.y;
-      const cross = ex1 * ey2 - ey1 * ex2;
-      const facing = f.n[2] > 0 ? cross > 0 : cross < 0;
-      if (!facing) continue;
+      // 背面剔除：世界法向变换到相机空间，与视线向量点积
+      const nc = rotX(rotY({ x: f.n[0], y: f.n[1], z: f.n[2] }, -cam.yaw), -cam.pitch);
+      if (nc.x * view.x + nc.y * view.y + nc.z * view.z >= 0) continue;
+      if (f.i.some(k => !corners[k])) continue;
+      const p1 = corners[f.i[0]];
       const alpha = fogAlpha(view.z);
       const shade = 0.35 + 0.65 * Math.abs((f.n[0] * Math.sin(cam.yaw) + f.n[2] * -Math.cos(cam.yaw)));
       const hue = (b.x * 7 + b.z * 13 + 200) % 360;
