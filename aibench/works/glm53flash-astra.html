@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ASTRA · 粒子聚散</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:auto}
+  body{background:#05060a;font-family:"Segoe UI","Microsoft YaHei",sans-serif}
+  #stage{position:fixed;inset:0;z-index:0}
+  .sec{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#dfe6f2;position:relative;z-index:2;pointer-events:none}
+  .sec h1{font-size:clamp(28px,5vw,54px);letter-spacing:14px;font-weight:600;text-shadow:0 0 30px rgba(120,160,255,.35)}
+  .sec p{margin-top:16px;color:#8a93a8;font-size:13px;letter-spacing:3px}
+  #tip{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:3;
+    color:#5f6a80;font-size:11px;letter-spacing:2px;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="sec"><h1>ASTRA</h1><p>向下滚动 — 粒子聚合成图形</p></div>
+<div class="sec"><h1>CONSTELLATION</h1><p>继续滚动 — 再次散落成星海</p></div>
+<div class="sec"><h1>FIN</h1><p>移动鼠标扰动粒子 · R 回到顶部</p></div>
+<div id="tip">滚动控制聚散 ⇕ · 鼠标扰动粒子</div>
+<script>
+"use strict";
+(function(){
+const cv=document.getElementById("stage");
+const ctx=cv.getContext("2d");
+if(!ctx){document.body.textContent="Canvas 不可用";return;}
+
+let W=0,H=0;
+function resize(){
+  const DPR=Math.min(window.devicePixelRatio||1,2);
+  W=window.innerWidth;H=window.innerHeight;
+  cv.width=Math.max(1,Math.round(W*DPR));
+  cv.height=Math.max(1,Math.round(H*DPR));
+  cv.style.width=W+"px";cv.style.height=H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  buildTargets();
+}
+
+/* ---------- 目标形状：离屏画字再采样 ---------- */
+let targets=[];
+function buildTargets(){
+  targets=[];
+  const off=document.createElement("canvas");
+  off.width=Math.max(1,W);off.height=Math.max(1,H);
+  const o=off.getContext("2d");
+  if(o){
+    o.fillStyle="#fff";
+    o.textAlign="center";o.textBaseline="middle";
+    const fs=Math.min(W*.18,240);
+    o.font="600 "+fs+"px Georgia,serif";
+    o.fillText("ASTRA",W/2,H*.4);
+    const s=Math.min(W,H);
+    o.lineWidth=Math.max(2,s*.012);
+    o.strokeStyle="#fff";
+    o.beginPath();o.arc(W/2,H*.66,s*.16,0,Math.PI*2);o.stroke();
+    try{
+      const img=o.getImageData(0,0,W,H).data;
+      const gap=Math.max(3,Math.round(s/210));
+      for(let y=0;y<H;y+=gap)
+        for(let x=0;x<W;x+=gap)
+          if(img[(y*W+x)*4+3]>128)
+            targets.push({x:x,y:y});
+    }catch(e){targets=[];}
+  }
+  /* 兜底：采样不到就给一个圆环目标 */
+  if(targets.length<50){
+    const s=Math.min(W,H);
+    for(let i=0;i<700;i++){
+      const a=i/700*Math.PI*2;
+      const r=s*.16*(0.85+Math.random()*.3);
+      targets.push({x:W/2+Math.cos(a)*r,y:H*.66+Math.sin(a)*r});
+    }
+  }
+  for(let i=0;i<parts.length;i++)
+    parts[i].tg=targets[i%targets.length];
+}
+
+/* ---------- 粒子 ---------- */
+const N=2200;
+const parts=[];
+function initParts(){
+  parts.length=0;
+  for(let i=0;i<N;i++){
+    parts.push({
+      x:Math.random()*W,y:Math.random()*H,
+      vx:0,vy:0,
+      sx:Math.random()*W,sy:Math.random()*H,
+      size:.6+Math.random()*1.6,
+      tw:Math.random()*Math.PI*2,
+      ts:.5+Math.random()*1.5,
+      hue:200+Math.random()*80,
+      tg:null,
+    });
+  }
+}
+initParts();
+resize();
+window.addEventListener("resize",resize);
+
+/* ---------- 鼠标 ---------- */
+const mouse={x:-9999,y:-9999,vx:0,vy:0};
+window.addEventListener("pointermove",e=>{
+  mouse.vx=e.clientX-mouse.x;mouse.vy=e.clientY-mouse.y;
+  mouse.x=e.clientX;mouse.y=e.clientY;
+});
+document.addEventListener("mouseleave",()=>{mouse.x=-9999;mouse.y=-9999;});
+
+/* ---------- 滚动 → 聚合度 ---------- */
+let gather=0;
+function readScroll(){
+  const doc=document.documentElement;
+  const max=Math.max(1,(doc.scrollHeight||H*3)-H);
+  const y=window.pageYOffset||doc.scrollTop||0;
+  const t=Math.min(1,Math.max(0,y/max));
+  const g=Math.sin(t*Math.PI);           // 0→1→0 三屏节奏
+  gather+=(g-gather)*.08;
+}
+window.addEventListener("scroll",readScroll,{passive:true});
+window.addEventListener("keydown",e=>{
+  if(e.key==="r"||e.key==="R")window.scrollTo({top:0});
+});
+
+/* ---------- 主循环 ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.033,Math.max(.001,(now-last)/1000));
+  last=now;
+  readScroll();
+  /* 拖尾底色 */
+  ctx.globalCompositeOperation="source-over";
+  ctx.fillStyle="rgba(5,6,10,.5)";
+  ctx.fillRect(0,0,W,H);
+  /* 发光叠加 */
+  ctx.globalCompositeOperation="lighter";
+
+  const mr=130;
+  const mvx=Math.max(-40,Math.min(40,mouse.vx));
+  const mvy=Math.max(-40,Math.min(40,mouse.vy));
+  const breathe=Math.sin(now/1700);
+  for(let i=0;i<parts.length;i++){
+    const p=parts[i];
+    const tg=p.tg||{x:W/2,y:H/2};
+    const tx=p.sx+(tg.x-p.sx)*gather;
+    const ty=p.sy+(tg.y-p.sy)*gather;
+    p.vx+=(tx-p.x)*.012;
+    p.vy+=(ty-p.y)*.012;
+    /* 鼠标排斥 + 速度甩动 */
+    const dx=p.x-mouse.x,dy=p.y-mouse.y;
+    const d2=dx*dx+dy*dy;
+    if(d2<mr*mr&&d2>.01){
+      const d=Math.sqrt(d2),f=(1-d/mr)*2.2;
+      p.vx+=dx/d*f+mvx*.05*(1-d/mr);
+      p.vy+=dy/d*f+mvy*.05*(1-d/mr);
+    }
+    p.vx*=.9;p.vy*=.9;
+    p.x+=p.vx*dt*60+Math.sin(now/1700+p.tw)*.1*(1-gather);
+    p.y+=p.vy*dt*60+Math.cos(now/2100+p.tw)*.1*(1-gather);
+    /* 绘制 */
+    const twinkle=.55+.45*Math.sin(now/1000*p.ts+p.tw);
+    const alpha=(.25+(1-gather)*.6)*twinkle+gather*.4;
+    const r=p.size*(0.8+gather*.5);
+    ctx.fillStyle="hsla("+p.hue+",85%,"+(70+gather*10)+"%,"+Math.min(1,alpha).toFixed(3)+")";
+    ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
+    /* 散开态：亮粒子加十字星光 */
+    if(gather<.4&&p.size>1.6){
+      ctx.strokeStyle="hsla("+p.hue+",85%,82%,"+(alpha*.5).toFixed(3)+")";
+      ctx.lineWidth=.6;
+      ctx.beginPath();
+      ctx.moveTo(p.x-r*3,p.y);ctx.lineTo(p.x+r*3,p.y);
+      ctx.moveTo(p.x,p.y-r*3);ctx.lineTo(p.x,p.y+r*3);
+      ctx.stroke();
+    }
+  }
+  /* 聚合态：近距连线增辉 */
+  if(gather>.55){
+    ctx.strokeStyle="rgba(140,170,255,"+((gather-.55)*.3).toFixed(3)+")";
+    ctx.lineWidth=.5;
+    for(let i=0;i<parts.length;i+=7){
+      const a=parts[i],b=parts[(i*13+5)%parts.length];
+      if(Math.abs(a.x-b.x)<26&&Math.abs(a.y-b.y)<26){
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      }
+    }
+  }
+  mouse.vx*=.8;mouse.vy*=.8;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

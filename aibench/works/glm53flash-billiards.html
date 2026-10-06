@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 台球 · POOL 3D</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#07090c;font-family:"Segoe UI","Microsoft YaHei",sans-serif;user-select:none}
+  canvas{display:block;position:absolute;inset:0;touch-action:none}
+  #hud{position:fixed;top:14px;left:16px;color:#cfd6e0;z-index:10;pointer-events:none;line-height:1.7}
+  #hud h1{font-size:15px;letter-spacing:4px;color:#e8c87a;font-weight:600}
+  #hud .dim{font-size:11px;color:#7d8595;letter-spacing:1px}
+  #help{position:fixed;bottom:14px;left:16px;color:#6b7382;font-size:11px;letter-spacing:1px;z-index:10;pointer-events:none;line-height:1.8}
+  #powerWrap{position:fixed;right:18px;top:50%;transform:translateY(-50%);width:14px;height:46vh;z-index:10;
+    background:#141920;border:1px solid #2a313c;border-radius:8px;overflow:hidden}
+  #powerBar{position:absolute;bottom:0;left:0;width:100%;height:0%;
+    background:linear-gradient(0deg,#3fae5a,#e8c87a 60%,#d84b3a)}
+  #pockets{position:fixed;bottom:14px;right:16px;display:flex;gap:6px;z-index:10;pointer-events:none}
+  .pb{width:26px;height:26px;border-radius:50%;border:2px solid #2a313c;opacity:.35;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:#111;font-weight:700}
+  .pb.in{opacity:1;box-shadow:0 0 10px rgba(232,200,122,.35)}
+  #msg{position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;
+    color:#e8c87a;font-size:26px;letter-spacing:6px;text-shadow:0 0 30px rgba(232,200,122,.4);
+    opacity:0;transition:opacity .5s;pointer-events:none}
+  #msg.show{opacity:1}
+  #msg small{display:block;font-size:12px;color:#9aa3b2;letter-spacing:2px;margin-top:10px}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <h1>POOL·3D</h1>
+  <div class="dim" id="stat">已落袋 0 / 15</div>
+  <div class="dim" id="turn">瞄准中 — 按住左键蓄力</div>
+</div>
+<div id="powerWrap" aria-hidden="true"><div id="powerBar"></div></div>
+<div id="pockets"></div>
+<div id="help">左键按住蓄力/松手击球 · 移动鼠标瞄准 · 右键拖动旋转视角 · 滚轮缩放 · R 重置</div>
+<div id="msg"></div>
+<script>
+"use strict";
+/* ================= 基础 ================= */
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+let W,H,DPR;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+"px";cv.style.height=H+"px";ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener("resize",resize);resize();
+
+const V=(x,y,z)=>({x,y,z});
+const add=(a,b)=>V(a.x+b.x,a.y+b.y,a.z+b.z);
+const sub=(a,b)=>V(a.x-b.x,a.y-b.y,a.z-b.z);
+const mul=(a,s)=>V(a.x*s,a.y*s,a.z*s);
+const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
+const cross=(a,b)=>V(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
+const len=a=>Math.hypot(a.x,a.y,a.z);
+const norm=a=>{const l=len(a)||1;return V(a.x/l,a.y/l,a.z/l);};
+
+/* ================= 音效（WebAudio 合成） ================= */
+let AC=null;
+function sfx(vol,freq,dur){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type="sine";o.frequency.value=freq;
+    g.gain.setValueAtTime(Math.min(vol,.5),AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+dur);
+    o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+dur);
+  }catch(e){}
+}
+
+/* ================= 相机 ================= */
+const cam={yaw:0,pitch:.62,dist:34,target:V(0,0,0)};
+function camEye(){
+  const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);
+  return V(cam.target.x+Math.sin(cam.yaw)*cp*cam.dist,
+           cam.target.y+sp*cam.dist,
+           cam.target.z+Math.cos(cam.yaw)*cp*cam.dist);
+}
+const FOCAL=1.15;
+function project(p,eye,fwd,right,up){
+  const d=sub(p,eye),z=dot(d,fwd);
+  if(z<0.1)return null;
+  const x=dot(d,right),y=dot(d,up);
+  return {x:W/2+x/z*H*FOCAL,y:H/2-y/z*H*FOCAL,z,s:1/z};
+}
+function camBasis(){
+  const eye=camEye(),fwd=norm(sub(cam.target,eye));
+  let right=norm(cross(fwd,V(0,1,0)));
+  const up=cross(right,fwd);
+  return{eye,fwd,right,up};
+}
+
+/* ================= 桌面参数 ================= */
+const R=.55;                 // 球半径
+const HX=11.2,HZ=5.6;        // 库内半长/半宽
+const RAIL=1.1,RAILH=1.35;   // 木库宽/高
+const POCKET=1.05;           // 袋口半径
+const FRICTION=.985,STOPV=.03,WALL_E=.78,BALL_E=.94;
+const POCKETS=[[HX,HZ],[-HX,HZ],[HX,-HZ],[-HX,-HZ],[0,HZ+.25],[0,-HZ-.25]];
+
+/* ================= 球 ================= */
+const COLORS={1:"#f4c400",2:"#1c53c8",3:"#d0342c",4:"#6a3aa0",5:"#e07818",6:"#1c7a44",7:"#8a2b1e",8:"#181818",
+  9:"#f4c400",10:"#1c53c8",11:"#d0342c",12:"#6a3aa0",13:"#e07818",14:"#1c7a44",15:"#8a2b1e"};
+let balls=[];
+function mkBall(n,x,z){
+  return{n,x,z,vx:0,vz:0,pocketed:false,
+    spot:n===0?V(0,1,0):norm(V(Math.random()-.5,Math.random()-.5,Math.random()-.5)),striped:n>8};
+}
+function rack(){
+  balls=[mkBall(0,-HX*.55,0)];
+  const order=[1,11,5,14,8,2,10,9,13,4,3,15,7,12,6];
+  let i=0;
+  for(let row=0;row<5;row++)for(let k=0;k<=row;k++){
+    const x=HX*.55+row*R*1.74;
+    const z=(k-row/2)*R*2.05;
+    balls.push(mkBall(order[i++],x,z));
+  }
+}
+rack();
+
+/* ================= 物理 ================= */
+function nearPocket(x,z){
+  for(const[px,pz]of POCKETS){
+    const dx=x-px,dz=z-pz;
+    if(dx*dx+dz*dz<POCKET*POCKET*.8)return true;
+  }
+  return false;
+}
+function physStep(dt){
+  const sub=4,h=dt/sub;
+  for(let s=0;s<sub;s++){
+    for(const b of balls){
+      if(b.pocketed)continue;
+      b.x+=b.vx*h;b.z+=b.vz*h;
+      /* 落袋检测 */
+      for(const[px,pz]of POCKETS){
+        const dx=b.x-px,dz=b.z-pz;
+        if(dx*dx+dz*dz<POCKET*POCKET*.62){
+          b.pocketed=true;b.vx=b.vz=0;pocketEvent(b);break;
+        }
+      }
+      if(b.pocketed)continue;
+      /* 库边 */
+      const bx=nearPocket(b.x,b.z)?0:1;
+      if(bx){
+        if(b.x<-HX+R&&b.vx<0){b.x=-HX+R;b.vx=-b.vx*WALL_E;sfx(Math.abs(b.vx)*.05,180,.12);}
+        if(b.x> HX-R&&b.vx>0){b.x= HX-R;b.vx=-b.vx*WALL_E;sfx(Math.abs(b.vx)*.05,180,.12);}
+        if(b.z<-HZ+R&&b.vz<0){b.z=-HZ+R;b.vz=-b.vz*WALL_E;sfx(Math.abs(b.vz)*.05,180,.12);}
+        if(b.z> HZ-R&&b.vz>0){b.z= HZ-R;b.vz=-b.vz*WALL_E;sfx(Math.abs(b.vz)*.05,180,.12);}
+      }
+      /* 滚动摩擦 + 号码点翻转 */
+      const sp=Math.hypot(b.vx,b.vz);
+      if(sp>0){
+        const k=Math.pow(FRICTION,h*60);
+        b.vx*=k;b.vz*=k;
+        if(sp<STOPV){b.vx=0;b.vz=0;}
+        const axis=norm(cross(V(0,1,0),V(b.vx,0,b.vz)));
+        rotateSpot(b,axis,sp*h/R);
+      }
+    }
+    /* 球间碰撞 */
+    for(let i=0;i<balls.length;i++){
+      const a=balls[i];if(a.pocketed)continue;
+      for(let j=i+1;j<balls.length;j++){
+        const b=balls[j];if(b.pocketed)continue;
+        const dx=b.x-a.x,dz=b.z-a.z,d2=dx*dx+dz*dz,min=R*2;
+        if(d2<min*min&&d2>1e-9){
+          const d=Math.sqrt(d2),nx=dx/d,nz=dz/d;
+          const rel=(b.vx-a.vx)*nx+(b.vz-a.vz)*nz;
+          if(rel<0){
+            const imp=-rel*BALL_E;
+            a.vx-=imp*nx;a.vz-=imp*nz;
+            b.vx+=imp*nx;b.vz+=imp*nz;
+            if(Math.abs(rel)>.6)sfx(Math.abs(rel)*.09,900,.08);
+          }
+          const overlap=(min-d)/2+.001;
+          a.x-=nx*overlap;a.z-=nz*overlap;
+          b.x+=nx*overlap;b.z+=nz*overlap;
+        }
+      }
+    }
+  }
+}
+function rotateSpot(b,axis,ang){
+  const c=Math.cos(ang),s=Math.sin(ang);
+  const r=add(mul(b.spot,c),add(mul(axis,dot(axis,b.spot)*(1-c)),mul(cross(axis,b.spot),s)));
+  b.spot=norm(r);
+}
+
+/* ================= 规则/流程 ================= */
+let state="AIM";           // AIM | CHARGE | ROLL | HAND
+let power=0,chargeDir=1,aimAng=0,pocketedCount=0;
+const statEl=document.getElementById("stat"),turnEl=document.getElementById("turn"),msgEl=document.getElementById("msg");
+const pkEl=document.getElementById("pockets");
+for(let n=1;n<=15;n++){
+  const d=document.createElement("div");d.className="pb";d.id="pb"+n;
+  d.style.background=COLORS[n];d.textContent=n;pkEl.appendChild(d);
+}
+function pocketEvent(b){
+  sfx(.4,220,.4);
+  if(b.n===0){
+    b.pocketed=false;b.x=-HX*.55;b.z=0;b.vx=b.vz=0;   // 白球手中球
+    state="HAND";showMsg("白球落袋","手中球 — 移动白球后继续");
+  }else{
+    pocketedCount++;
+    document.getElementById("pb"+b.n).classList.add("in");
+    statEl.textContent=`已落袋 ${pocketedCount} / 15`;
+    if(pocketedCount===15)setTimeout(()=>{showMsg("清 台 完 成","按 R 重新开始");state="DONE";},600);
+  }
+}
+function showMsg(t,s){msgEl.innerHTML=`${t}<small>${s||""}</small>`;msgEl.classList.add("show");
+  clearTimeout(showMsg.t);showMsg.t=setTimeout(()=>msgEl.classList.remove("show"),2200);}
+function anyMoving(){return balls.some(b=>!b.pocketed&&(b.vx||b.vz));}
+function reset(){rack();pocketedCount=0;state="AIM";power=0;
+  document.querySelectorAll(".pb").forEach(e=>e.classList.remove("in"));
+  statEl.textContent="已落袋 0 / 15";showMsg("新局开始","");}
+
+/* ================= 输入 ================= */
+const mouse={x:W/2,y:H/2,down:false,rdown:false,lx:0,ly:0};
+function aimFromMouse(){
+  const cue=balls[0];
+  const{eye,fwd,right,up}=camBasis();
+  /* 把鼠标射线投到桌面 y=R 平面 */
+  const mx=mouse.x,my=mouse.y;
+  const dirScreen=V((mx-W/2)/(H*FOCAL),-(my-H/2)/(H*FOCAL),1);
+  const wd=add(add(mul(right,dirScreen.x),mul(up,dirScreen.y)),mul(fwd,dirScreen.z));
+  const t=(R-eye.y)/wd.y;
+  if(t>0){
+    const hit=add(eye,mul(wd,t));
+    const dx=hit.x-cue.x,dz=hit.z-cue.z;
+    if(dx*dx+dz*dz>1)aimAng=Math.atan2(dz,dx);
+  }
+}
+cv.addEventListener("pointerdown",e=>{
+  if(e.button===2){mouse.rdown=true;mouse.lx=e.clientX;mouse.ly=e.clientY;return;}
+  if(state==="AIM"){state="CHARGE";power=0;chargeDir=1;}
+  else if(state==="HAND"&&e.button===0){placeCueFromMouse();state="CHARGE";power=0;chargeDir=1;}
+});
+cv.addEventListener("pointermove",e=>{
+  mouse.x=e.clientX;mouse.y=e.clientY;
+  if(mouse.rdown){
+    cam.yaw-=(e.clientX-mouse.lx)*.008;
+    cam.pitch=Math.min(1.35,Math.max(.12,cam.pitch+(e.clientY-mouse.ly)*.006));
+    mouse.lx=e.clientX;mouse.ly=e.clientY;
+  }else if(state==="AIM")aimFromMouse();
+  else if(state==="HAND")placeCueFromMouse();
+});
+addEventListener("pointerup",e=>{
+  if(e.button===2){mouse.rdown=false;return;}
+  if(state==="CHARGE")shoot();
+  else if(state==="HAND"&&e.button===0){state="AIM";turnEl.textContent="瞄准中 — 按住左键蓄力";}
+});
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+cv.addEventListener("wheel",e=>{cam.dist=Math.min(60,Math.max(14,cam.dist+e.deltaY*.02));e.preventDefault();},{passive:false});
+addEventListener("keydown",e=>{if(e.key==="r"||e.key==="R")reset();});
+function placeCueFromMouse(){
+  const{eye,fwd,right,up}=camBasis();
+  const wd=add(add(mul(right,(mouse.x-W/2)/(H*FOCAL)),mul(up,-(mouse.y-H/2)/(H*FOCAL))),mul(fwd,1));
+  const t=(R-eye.y)/wd.y;if(t<=0)return;
+  const hit=add(eye,mul(wd,t));
+  const cue=balls[0];
+  let nx=Math.max(-HX+R+.02,Math.min(HX-R-.02,hit.x));
+  let nz=Math.max(-HZ+R+.02,Math.min(HZ-R-.02,hit.z));
+  /* 不得压在其他球上 */
+  for(const b of balls){
+    if(b===cue||b.pocketed)continue;
+    const dx=nx-b.x,dz=nz-b.z,d=Math.hypot(dx,dz);
+    if(d<R*2){const k=(R*2-d)/d;nx+=dx*k;nz+=dz*k;}
+  }
+  cue.x=nx;cue.z=nz;
+}
+function shoot(){
+  const cue=balls[0];
+  const p=Math.max(.08,power);
+  const sp=p*22;
+  cue.vx=Math.cos(aimAng)*sp;cue.vz=Math.sin(aimAng)*sp;
+  state="ROLL";power=0;
+  sfx(p*.5,140,.15);
+  turnEl.textContent="击球 — 等待球停止…";
+}
+
+/* ================= 绘制 ================= */
+function drawTable(B){
+  const P=(x,z,y)=>project(V(x,y,z),B.eye,B.fwd,B.right,B.up);
+  const quad=(pts,fill,stroke)=>{
+    const pp=pts.map(p=>project(p,B.eye,B.fwd,B.right,B.up));
+    if(pp.some(q=>!q))return;
+    ctx.beginPath();ctx.moveTo(pp[0].x,pp[0].y);
+    for(let i=1;i<pp.length;i++)ctx.lineTo(pp[i].x,pp[i].y);
+    ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
+  };
+  /* 地面光晕 */
+  quad([V(-HX-RAIL-3,0,-HZ-RAIL-3),V(HX+RAIL+3,0,-HZ-RAIL-3),V(HX+RAIL+3,0,HZ+RAIL+3),V(-HX-RAIL-3,0,HZ+RAIL+3)],"#0b0e13");
+  /* 绒布 */
+  quad([V(-HX-RAIL,0,-HZ-RAIL),V(HX+RAIL,0,-HZ-RAIL),V(HX+RAIL,0,HZ+RAIL),V(-HX-RAIL,0,HZ+RAIL)],"#0d3b22");
+  quad([V(-HX,0,-HZ),V(HX,0,-HZ),V(HX,0,HZ),V(-HX,0,HZ)],"#11532e");
+  /* 开球线与点 */
+  const h0=P(-HX*.55,0,0),h1=P(-HX*.55,0,HZ),h2=P(-HX*.55,0,-HZ);
+  if(h0&&h1&&h2){ctx.beginPath();ctx.moveTo(h1.x,h1.y);ctx.lineTo(h0.x,h0.y);ctx.lineTo(h2.x,h2.y);
+    ctx.strokeStyle="rgba(255,255,255,.14)";ctx.lineWidth=1.5;ctx.stroke();}
+  const fs=P(HX*.55,0,0);if(fs){ctx.beginPath();ctx.arc(fs.x,fs.y,3*fs.s*H*FOCAL/300+1,0,7);ctx.fillStyle="rgba(255,255,255,.2)";ctx.fill();}
+  /* 木库 4 条 + 边框 */
+  const wood="#4a2f1a",woodHi="#5d3c22",woodDk="#33200f";
+  quad([V(-HX-RAIL,0,-HZ-RAIL),V(HX+RAIL,0,-HZ-RAIL),V(HX+RAIL,RAILH,-HZ-RAIL),V(-HX-RAIL,RAILH,-HZ-RAIL)],woodHi,woodDk);
+  quad([V(-HX-RAIL,0,HZ+RAIL),V(HX+RAIL,0,HZ+RAIL),V(HX+RAIL,RAILH,HZ+RAIL),V(-HX-RAIL,RAILH,HZ+RAIL)],woodDk);
+  quad([V(-HX-RAIL,0,-HZ-RAIL),V(-HX-RAIL,0,HZ+RAIL),V(-HX-RAIL,RAILH,HZ+RAIL),V(-HX-RAIL,RAILH,-HZ-RAIL)],wood);
+  quad([V(HX+RAIL,0,-HZ-RAIL),V(HX+RAIL,0,HZ+RAIL),V(HX+RAIL,RAILH,HZ+RAIL),V(HX+RAIL,RAILH,-HZ-RAIL)],wood);
+  /* 库边内壁（橡胶） */
+  quad([V(-HX,0,-HZ),V(HX,0,-HZ),V(HX,RAILH*.72,-HZ),V(-HX,RAILH*.72,-HZ)],"#0a2e1a");
+  quad([V(-HX,0,HZ),V(HX,0,HZ),V(HX,RAILH*.72,HZ),V(-HX,RAILH*.72,HZ)],"#0a2e1a");
+  quad([V(-HX,0,-HZ),V(-HX,0,HZ),V(-HX,RAILH*.72,HZ),V(-HX,RAILH*.72,-HZ)],"#082716");
+  quad([V(HX,0,-HZ),V(HX,0,HZ),V(HX,RAILH*.72,HZ),V(HX,RAILH*.72,-HZ)],"#082716");
+  /* 袋口 */
+  for(const[px,pz]of POCKETS){
+    const c=P(px,0,pz);
+    if(!c)continue;
+    const pr=POCKET*1.15*c.s*H*FOCAL;
+    const g=ctx.createRadialGradient(c.x,c.y,pr*.2,c.x,c.y,pr);
+    g.addColorStop(0,"#000");g.addColorStop(.75,"#000");g.addColorStop(1,"#1c3a28");
+    ctx.beginPath();ctx.arc(c.x,c.y,pr,0,7);ctx.fillStyle=g;ctx.fill();
+  }
+}
+function drawBall(b,B){
+  if(b.pocketed)return;
+  const pr=project(V(b.x,R,b.z),B.eye,B.fwd,B.right,B.up);
+  if(!pr)return;
+  const r=R*pr.s*H*FOCAL;
+  if(r<1.2)return;
+  /* 阴影 */
+  const sh=project(V(b.x,.02,b.z),B.eye,B.fwd,B.right,B.up);
+  if(sh){
+    ctx.beginPath();ctx.ellipse(sh.x,sh.y,R*.95*sh.s*H*FOCAL,R*.4*sh.s*H*FOCAL,0,0,7);
+    ctx.fillStyle="rgba(0,0,0,.4)";ctx.fill();
+  }
+  const col=b.n===0?"#f2f0e8":COLORS[b.n];
+  /* 球体 */
+  const lx=pr.x-r*.35,ly=pr.y-r*.45;
+  const g=ctx.createRadialGradient(lx,ly,r*.1,pr.x,pr.y,r*1.05);
+  g.addColorStop(0,"#ffffff");
+  g.addColorStop(.25,col);
+  g.addColorStop(1,shade(col));
+  ctx.beginPath();ctx.arc(pr.x,pr.y,r,0,7);ctx.fillStyle=g;ctx.fill();
+  /* 条纹球白帽 */
+  if(b.striped){
+    /* 简化：画上下白带（依 spot 方向省略，视觉近似） */
+    ctx.save();ctx.beginPath();ctx.arc(pr.x,pr.y,r,0,7);ctx.clip();
+    ctx.fillStyle="rgba(245,242,232,.9)";
+    ctx.fillRect(pr.x-r,pr.y-r*.62,r*2,r*.32);
+    ctx.fillRect(pr.x-r,pr.y+r*.3,r*2,r*.32);
+    ctx.restore();
+  }
+  /* 号码点：spot 朝向相机时显示 */
+  const spWorld=add(V(b.x,R,b.z),mul(b.spot,R));
+  const toCam=norm(sub(B.eye,spWorld));
+  if(dot(b.spot,toCam)>.55){
+    const sp=project(spWorld,B.eye,B.fwd,B.right,B.up);
+    if(sp){
+      const sr=r*.52;
+      ctx.beginPath();ctx.arc(sp.x,sp.y,sr,0,7);ctx.fillStyle="#f5f2e8";ctx.fill();
+      if(b.n>0&&sr>5){
+        ctx.fillStyle="#1a1a1a";ctx.font=`700 ${sr*1.1}px Arial`;
+        ctx.textAlign="center";ctx.textBaseline="middle";
+        ctx.fillText(b.n,sp.x,sp.y+sr*.06);
+      }
+    }
+  }
+  /* 高光 */
+  ctx.beginPath();ctx.arc(pr.x-r*.35,pr.y-r*.45,r*.16,0,7);
+  ctx.fillStyle="rgba(255,255,255,.75)";ctx.fill();
+}
+function shade(hex){
+  const n=parseInt(hex.slice(1),16);
+  const r=(n>>16)*.45|0,g=((n>>8)&255)*.45|0,b=(n&255)*.45|0;
+  return `rgb(${r},${g},${b})`;
+}
+function drawCue(B){
+  if(state!=="AIM"&&state!=="CHARGE")return;
+  const cue=balls[0];
+  const dir=V(Math.cos(aimAng),0,Math.sin(aimAng));
+  const pull=.9+power*3.2;
+  const tip=add(V(cue.x,R,cue.z),mul(dir,-(R+pull)));
+  const butt=add(tip,mul(dir,-4.2));
+  const p1=project(tip,B.eye,B.fwd,B.right,B.up),p2=project(add(mul(tip,.75),mul(butt,.25)),B.eye,B.fwd,B.right,B.up),p3=project(butt,B.eye,B.fwd,B.right,B.up);
+  if(!p1||!p3)return;
+  /* 瞄准线 */
+  const aimEnd=add(V(cue.x,R,cue.z),mul(dir,aimDist(cue,dir)));
+  const pa=project(V(cue.x+dir.x*R*1.2,R,cue.z+dir.z*R*1.2),B.eye,B.fwd,B.right,B.up);
+  const pb=project(aimEnd,B.eye,B.fwd,B.right,B.up);
+  if(pa&&pb){
+    ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+    ctx.setLineDash([6,7]);ctx.strokeStyle="rgba(255,255,255,.5)";ctx.lineWidth=1.4;ctx.stroke();ctx.setLineDash([]);
+  }
+  /* 杆身 */
+  ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p3.x,p3.y);
+  ctx.lineWidth=Math.max(2,p1.s*4.5);ctx.lineCap="round";
+  const lg=ctx.createLinearGradient(p1.x,p1.y,p3.x,p3.y);
+  lg.addColorStop(0,"#e8c87a");lg.addColorStop(.12,"#c8965a");lg.addColorStop(1,"#3a2414");
+  ctx.strokeStyle=lg;ctx.stroke();
+  ctx.beginPath();ctx.arc(p1.x,p1.y,Math.max(1.5,p1.s*2.4),0,7);ctx.fillStyle="#7fb8d8";ctx.fill();
+}
+function aimDist(cue,dir){
+  /* 射线与球求交，取最近 */
+  let best=30;
+  for(const b of balls){
+    if(b===cue||b.pocketed)continue;
+    const ox=b.x-cue.x,oz=b.z-cue.z;
+    const t=ox*dir.x+oz*dir.z;
+    if(t<=0)continue;
+    const px=ox-dir.x*t,pz=oz-dir.z*t;
+    const d2=px*px+pz*pz;
+    if(d2<R*4)best=Math.min(best,t-R*1.7);
+  }
+  return Math.max(1,best);
+}
+
+/* ================= 主循环 ================= */
+let last=performance.now(),chargeT=0;
+function frame(now){
+  const dt=Math.min(.033,(now-last)/1000);last=now;
+  /* 更新 */
+  if(state==="CHARGE"){
+    chargeT+=dt;
+    power+=chargeDir*dt*.9;
+    if(power>1){power=1;chargeDir=-1;}
+    if(power<0){power=0;chargeDir=1;}
+    document.getElementById("powerBar").style.height=(power*100)+"%";
+    turnEl.textContent="蓄力 "+Math.round(power*100)+"% — 松手击球";
+  }
+  if(state==="ROLL"){
+    physStep(dt);
+    if(!anyMoving()){
+      state=balls[0].pocketed?"HAND":"AIM";
+      turnEl.textContent=state==="HAND"?"手中球 — 移动鼠标放白球，点击确认":"瞄准中 — 按住左键蓄力";
+    }
+  }
+  /* 渲染 */
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(W/2,H*.35,H*.1,W/2,H*.5,H);
+  bg.addColorStop(0,"#131720");bg.addColorStop(1,"#07090c");
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const B=camBasis();
+  drawTable(B);
+  /* 球按深度排序绘制 */
+  const vis=balls.filter(b=>!b.pocketed)
+    .map(b=>({b,d:dot(sub(V(b.x,R,b.z),B.eye),B.fwd)}))
+    .sort((a,b)=>b.d-a.d);
+  for(const{b}of vis)drawBall(b,B);
+  drawCue(B);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

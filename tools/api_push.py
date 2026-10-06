@@ -70,8 +70,8 @@ print("remote files: %d" % len(remote_paths))
 upsert = [
     "index.html", "news.html", "sites.html", "sitemap.xml", "robots.txt",
     "about.html", "contact.html", "BingSiteAuth.xml",
-    "aibench/index.html", "aibench/data.js",
-    "tools/scan_aibench.py", "tools/api_push.py", "tools/check_remote.py",
+    "aibench/index.html", "aibench/data.js", "aibench/test.html",
+    "tools/scan_aibench.py", "tools/api_push.py", "tools/check_remote.py", "tools/auto_sync.py",
     "tools/indexnow_submit.sh", "tools/make_fake_qrcode_svg.py",
     "tools/indexnow_retry.sh", "tools/indexnow_longrun.sh",
     "tools/push_retry.sh", "tools/indexnow_result.log", "tools/搜索引擎提交指引.md",

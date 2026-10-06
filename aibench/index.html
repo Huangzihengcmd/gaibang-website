@@ -3,128 +3,157 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="AI 能力检测——同一道测试题，看看各家 AI 交出什么答卷。按题目分组，题目下挂各模型作品。">
-<meta name="keywords" content="AI能力检测,AI评测,大模型对比,丐帮">
-<title>AI 能力检测 · 丐帮</title>
-<link rel="icon" href="../logo.jpg">
-<link rel="stylesheet" href="../style.css">
+<meta name="description" content="AI 能力检测：同一道测试题，对比各家 AI 模型的实际产出。">
+<meta name="keywords" content="AI能力检测,AI评测,大模型对比,benchmark">
+<title>AI 能力检测</title>
 <style>
-header { text-align: center; position: relative; padding: 15px 0; }
-.site-logo {
-  width: 80px; height: 80px; object-fit: contain;
-  position: absolute; left: 30px; top: 50%;
-  transform: translateY(-50%); z-index: 10;
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --line: #e3e6ea;
+  --text: #1a1d21;
+  --muted: #6b7280;
+  --accent: #1f6feb;
 }
-header h1 { margin: 0 auto; position: relative; z-index: 5; color: #fff; }
-.container { max-width: 980px; margin: 30px auto; padding: 0 20px; }
-.page-title { text-align: center; color: #ffd700; font-size: 30px; margin-bottom: 8px; }
-.page-sub { text-align: center; color: #aaa; font-size: 14px; margin-bottom: 8px; }
-.page-note {
-  text-align: center; color: #666; font-size: 12px; margin-bottom: 32px;
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+               "PingFang SC", "Hiragino Sans GB", sans-serif;
+  line-height: 1.6;
 }
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+.topbar {
+  background: #fff; border-bottom: 1px solid var(--line);
+  padding: 18px 0; margin-bottom: 32px;
+}
+.topbar .wrap { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.brand { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
+.brand-sub { color: var(--muted); font-size: 13px; }
+.topbar nav { margin-left: auto; }
+.topbar nav a {
+  color: var(--muted); text-decoration: none; font-size: 13px; margin-left: 18px;
+}
+.topbar nav a:hover { color: var(--accent); }
+
+.head { margin-bottom: 28px; }
+.head h1 { font-size: 26px; margin: 0 0 8px; font-weight: 700; }
+.head p { margin: 0; color: var(--muted); font-size: 14px; }
+
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px; margin-bottom: 48px;
+}
+.card-link { text-decoration: none; color: inherit; display: block; }
 .card {
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,215,0,0.2);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 22px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  overflow: hidden; height: 100%; display: flex; flex-direction: column;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
 }
-.card h2 {
-  color: #ffd700; font-size: 21px; margin: 0 0 12px;
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+.card:hover {
+  border-color: #c9cfd6; box-shadow: 0 4px 16px rgba(0,0,0,.07);
+  transform: translateY(-2px);
 }
-.card h2 .count {
-  font-size: 12px; color: #000; background: #ffd700;
-  padding: 2px 9px; border-radius: 20px; font-weight: normal;
+.thumb {
+  height: 120px; background: linear-gradient(135deg, #eef1f5 0%, #e2e7ee 100%);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center; position: relative;
 }
-.card .desc { color: #ddd; font-size: 14px; line-height: 1.8; margin-bottom: 16px; }
-.card .label { color: #888; font-size: 12px; margin-bottom: 10px; letter-spacing: 1px; }
-.models { display: flex; flex-wrap: wrap; gap: 10px; }
-.models a, .models span.pending {
-  display: inline-block; padding: 7px 14px; border-radius: 8px;
-  font-size: 13px; text-decoration: none; transition: 0.2s;
+.thumb .num { font-size: 34px; font-weight: 700; color: #b9c0c9; letter-spacing: 1px; }
+.thumb .cnt { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--muted); }
+.card-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
+.card-body h2 { font-size: 17px; margin: 0 0 8px; font-weight: 650; }
+.card-body .date { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.card-body .desc {
+  font-size: 13px; color: #4b5563; margin-bottom: 14px; flex: 1;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
-.models a {
-  background: rgba(255,215,0,0.12);
-  border: 1px solid rgba(255,215,0,0.5);
-  color: #ffd700;
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  font-size: 12px; padding: 3px 9px; border-radius: 4px;
+  background: #f0f2f5; color: #374151; border: 1px solid var(--line); text-decoration: none;
 }
-.models a:hover { background: #ffd700; color: #000; }
-.models span.pending {
-  background: rgba(255,255,255,0.05);
-  border: 1px dashed rgba(255,255,255,0.2);
-  color: #777; cursor: default;
-}
-.footer-note {
-  text-align: center; color: #666; font-size: 13px;
-  margin: 40px 0 20px; line-height: 1.8;
-}
-.footer-note a { color: #ffd700; text-decoration: none; }
+.tag:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tag.pending { background: transparent; color: #9aa1ab; border-style: dashed; }
+
+footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--muted); font-size: 13px; }
+footer a { color: var(--accent); text-decoration: none; }
+code { background: #f0f2f5; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
 </style>
 </head>
-
 <body>
-<header>
-  <img src="../logo.jpg" class="site-logo" alt="丐帮Logo">
-  <h1 class="floating">丐帮</h1>
-  <nav>
-      <ul>
-          <li><a href="../index.html">首页</a></li>
-          <li><a href="../about.html">帮派介绍</a></li>
-          <li><a href="../news.html">新闻</a></li>
-          <li><a href="../sites.html">分舵</a></li>
-          <li><a href="../contact.html">联系</a></li>
-      </ul>
-  </nav>
-</header>
 
-<div class="container">
-  <h2 class="page-title">🧪 AI 能力检测</h2>
-  <p class="page-sub">同一道题，看看各家 AI 交出什么答卷</p>
-  <p class="page-note">按「测试题目」分组 · 点模型名字即可打开它做的作品</p>
-
-  <div id="testList"></div>
-
-  <div class="footer-note">
-    有新作品？丢进 <code>D:\AI能力检测</code> 对应文件夹，跑一下导入脚本即可自动更新本页。<br>
-    <a href="../sites.html">← 回分舵</a> · <a href="../index.html">回丐帮首页</a>
+<div class="topbar">
+  <div class="wrap">
+    <span class="brand">AI 能力检测</span>
+    <span class="brand-sub">同一道题，看各家模型的实际产出</span>
+    <nav>
+      <a href="https://gaibang.pages.dev/sites.html">丐帮分舵</a>
+      <a href="https://gaibang.pages.dev/">丐帮主站</a>
+    </nav>
   </div>
+</div>
+
+<div class="wrap">
+  <div class="head">
+    <h1>测试题目</h1>
+    <p>点卡片看题目原文与各模型提交；直接点模型名可打开对应作品。</p>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    有新作品请放入 <code>D:\AI能力检测</code> 对应目录，导入脚本会自动同步到本页。
+  </footer>
 </div>
 
 <script src="data.js"></script>
 <script>
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+
 function render() {
-  const data = window.AIBENCH;
-  const box = document.getElementById('testList');
-  if (!data || !data.tests) {
-    box.innerHTML = '<p style="color:#e74c3c;text-align:center">数据加载失败，请检查 data.js</p>';
-    return;
-  }
+  var d = window.AIBENCH;
+  var box = document.getElementById("grid");
+  if (!d || !d.tests) { box.innerHTML = "<p>数据加载失败：data.js</p>"; return; }
 
-  box.innerHTML = data.tests.map(t => {
-    // 有作品的模型
-    const done = data.models.filter(m => m.works && m.works[t.id]);
-    // 还没交的模型
-    const pending = data.models.filter(m => !(m.works && m.works[t.id]));
+  box.innerHTML = d.tests.map(function(t, i) {
+    var done = d.models.filter(function(m) { return m.works && m.works[t.id]; });
+    var pending = d.models.filter(function(m) { return !(m.works && m.works[t.id]); });
 
-    const doneHtml = done.map(m => `
-      <a href="works/${m.works[t.id]}" target="_blank" rel="noopener">${m.name}</a>
-    `).join('');
-    const pendingHtml = pending.map(m => `
-      <span class="pending">${m.name} · 制作中</span>
-    `).join('');
+    var latest = "";
+    done.forEach(function(m) {
+      var dt = (m.dates || {})[t.id] || "";
+      if (dt > latest) latest = dt;
+    });
 
-    return `
-      <div class="card">
-        <h2>${t.icon || ''} ${t.name} <span class="count">${done.length} 份答卷</span></h2>
-        <div class="desc">${t.desc}</div>
-        <div class="label">参与模型</div>
-        <div class="models">${doneHtml}${pendingHtml}</div>
-      </div>
-    `;
-  }).join('');
+    var tags = done.map(function(m) {
+      var dt = (m.dates || {})[t.id] || "";
+      return '<a class="tag" href="works/' + esc(m.works[t.id]) +
+             '" target="_blank" rel="noopener" onclick="event.stopPropagation();">' +
+             esc(m.name) + (dt ? " · " + dt : "") + "</a>";
+    }).join("") + pending.map(function(m) {
+      return '<span class="tag pending">' + esc(m.name) + " · 未提交</span>";
+    }).join("");
+
+    return '<a class="card-link" href="test.html?id=' + encodeURIComponent(t.id) + '">' +
+      '<div class="card">' +
+        '<div class="thumb"><span class="num">' +
+          String(i + 1).replace(/^(\d)$/, "0$1") +
+        '</span><span class="cnt">' + done.length + " 份提交</span></div>" +
+        '<div class="card-body">' +
+          "<h2>" + esc(t.name) + "</h2>" +
+          '<div class="date">' + (latest ? "最近更新 " + latest : "暂无提交") + "</div>" +
+          '<div class="desc">' + esc(t.prompt || "（缺说明原文）") + "</div>" +
+          '<div class="tags">' + tags + "</div>" +
+        "</div>" +
+      "</div>" +
+    "</a>";
+  }).join("");
 }
 
 window.onload = render;

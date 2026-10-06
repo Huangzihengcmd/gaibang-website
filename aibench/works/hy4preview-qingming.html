@@ -282,7 +282,9 @@ var state = {
   dragCam: 0,
   mouse: { x: -1, y: -1, wx: -1, wy: -1, inside: false },
   hoverShop: null,
-  count: 0
+  count: 0,
+  q: 1,                 // 画质档：1 全效 / 0 精简（帧率自适应）
+  fpsAcc: 0, fpsFrames: 0
 };
 
 /* ---------------- 视口自适应 ---------------- */
@@ -1231,7 +1233,8 @@ function drawRiver() {
   ctx.fillRect(0, RIVER_TOP, VW + 4, RIVER_BOT - RIVER_TOP);
 
   // 霓虹倒影（竖直光带）
-  for (var i = 0; i < world.signs.length; i++) {
+  var stride = state.q ? 1 : 3;
+  for (var i = 0; i < world.signs.length; i += stride) {
     var s = world.signs[i];
     var x = wrapX(s.x, 1);
     if (!vis(x, s.w)) continue;
@@ -1352,7 +1355,8 @@ function drawStreet() {
   ctx.fillRect(0, RIVER_BOT + 18, VW + 4, WORLD_H - RIVER_BOT);
 
   // 地面霓虹倒影
-  for (var i = 0; i < world.signs.length; i++) {
+  var stride2 = state.q ? 1 : 3;
+  for (var i = 0; i < world.signs.length; i += stride2) {
     var s = world.signs[i];
     var x = wrapX(s.x, 1);
     if (!vis(x, s.w)) continue;
@@ -1717,11 +1721,12 @@ function drawDragon() {
 function drawRain() {
   if (!state.rain) return;
   var VW = view.worldW;
+  var n = state.q ? world.rain.length : 110;
   ctx.save();
   ctx.strokeStyle = 'rgba(190,225,255,.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (var i = 0; i < world.rain.length; i++) {
+  for (var i = 0; i < n; i++) {
     var r = world.rain[i];
     var x = mod(r.x - state.camX * 1.15, VW + 60) - 30;
     var y = mod(r.y + state.t * r.sp, WORLD_H + 80) - 40;
@@ -1748,7 +1753,8 @@ function drawPost() {
   ctx.fillStyle = dn; ctx.fillRect(0, H - 70, VW + 4, 70);
   // 扫描线
   ctx.fillStyle = 'rgba(255,255,255,.028)';
-  for (var y = 0; y < H; y += 3) ctx.fillRect(0, y, VW + 4, 1);
+  var step = state.q ? 3 : 7;
+  for (var y = 0; y < H; y += step) ctx.fillRect(0, y, VW + 4, 1);
   // 缓慢移动的宽扫描带
   var sy = mod(state.t * 90, H + 200) - 100;
   var sg = ctx.createLinearGradient(0, sy, 0, sy + 100);
@@ -2022,6 +2028,16 @@ function frame(now) {
   var dt = (now - last) / 1000;
   last = now;
   if (dt > .1) dt = .1;          // 切标签页回来不要跳帧
+
+  // 帧率自适应：低于 40fps 自动精简特效，回到 56fps 以上恢复全效
+  state.fpsAcc += dt; state.fpsFrames++;
+  if (state.fpsAcc >= 1.2) {
+    var fps = state.fpsFrames / state.fpsAcc;
+    if (fps < 40 && state.q === 1) state.q = 0;
+    else if (fps > 56 && state.q === 0) state.q = 1;
+    state.fpsAcc = 0; state.fpsFrames = 0;
+  }
+
   update(dt);
   state.hoverShop = hitTest();
   document.body.style.cursor = state.hoverShop ? 'pointer' : (state.drag ? 'grabbing' : 'grab');

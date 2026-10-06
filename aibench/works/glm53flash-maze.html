@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>3D 迷宫 · MAZE RUNNER</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#05070a;font-family:"Segoe UI","Microsoft YaHei",sans-serif;user-select:none}
+  canvas{display:block;position:absolute;inset:0}
+  #hud{position:fixed;top:14px;left:16px;color:#bfe3ff;z-index:10;pointer-events:none;line-height:1.8;text-shadow:0 0 8px rgba(80,180,255,.35)}
+  #hud h1{font-size:15px;letter-spacing:5px;color:#7fd4ff;font-weight:600}
+  .dim{font-size:11px;color:#7d8595;letter-spacing:1px}
+  #minimap{position:fixed;top:14px;right:14px;z-index:10;border:1px solid #24425c;border-radius:6px;
+    background:rgba(6,12,20,.72);box-shadow:0 0 18px rgba(40,120,200,.15)}
+  #msg{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;color:#7fd4ff;
+    font-size:30px;letter-spacing:8px;text-shadow:0 0 34px rgba(120,210,255,.5);opacity:0;transition:opacity .45s;pointer-events:none}
+  #msg.show{opacity:1}
+  #msg small{display:block;font-size:12px;color:#8fa3b8;letter-spacing:3px;margin-top:12px}
+  #keys{position:fixed;bottom:16px;left:16px;display:flex;gap:8px;z-index:10;pointer-events:none}
+  .key{width:22px;height:22px;border-radius:50%;border:2px solid #2a313c;opacity:.25;background:#c8a020}
+  .key.got{opacity:1;box-shadow:0 0 12px rgba(240,200,80,.6)}
+  #help{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);color:#5f6a78;font-size:11px;letter-spacing:1px;z-index:10;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <h1>MAZE·RUNNER</h1>
+  <div class="dim" id="lv">第 1 层 · 21×21</div>
+  <div class="dim" id="timer">用时 00:00</div>
+  <div class="dim" id="obj">收集 3 把钥匙 → 找到出口</div>
+</div>
+<canvas id="minimap" width="180" height="180"></canvas>
+<div id="keys"></div>
+<div id="help">WASD / 方向键移动 · 鼠标或 Q/E 转向 · Shift 疾跑 · M 放大地图 · R 重开本层</div>
+<div id="msg"></div>
+<script>
+"use strict";
+/* ================= 画布 ================= */
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const mm=document.getElementById("minimap"),mctx=mm.getContext("2d");
+let W,H,DPR;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+"px";cv.style.height=H+"px";ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener("resize",resize);resize();
+
+/* ================= 音效 ================= */
+let AC=null;
+function sfx(vol,freq,dur,type="sine"){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(Math.min(vol,.4),AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+dur);
+    o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+dur);
+  }catch(e){}
+}
+
+/* ================= 迷宫生成（DFS 回溯，奇数网格） ================= */
+let MS=21;                       // 必须奇数
+let grid;                        // 1=墙 0=通路
+function genMaze(n){
+  const g=Array.from({length:n},()=>Array(n).fill(1));
+  const stack=[[1,1]];g[1][1]=0;
+  const dirs=[[0,-2],[0,2],[-2,0],[2,0]];
+  while(stack.length){
+    const[cx,cy]=stack[stack.length-1];
+    const opts=dirs.map(([dx,dy])=>[cx+dx,cy+dy,dx,dy])
+      .filter(([nx,ny])=>nx>0&&ny>0&&nx<n-1&&ny<n-1&&g[ny][nx]===1);
+    if(opts.length){
+      const[nx,ny,dx,dy]=opts[Math.random()*opts.length|0];
+      g[cy+dy/2][cx+dx/2]=0;g[ny][nx]=0;
+      stack.push([nx,ny]);
+    }else stack.pop();
+  }
+  /* 打通少量环路，避免纯树形太单调 */
+  for(let i=0;i<n;i++){
+    const x=1+(Math.random()*(n-2)|0),y=1+(Math.random()*(n-2)|0);
+    if(g[y][x]===1&&((g[y][x-1]===0&&g[y][x+1]===0)||(g[y-1][x]===0&&g[y+1][x]===0)))g[y][x]=0;
+  }
+  return g;
+}
+
+/* ================= 游戏状态 ================= */
+let px,py,pa;                    // 玩家位置/朝向
+let keysNeed=3,keysGot=0,level=1;
+let items=[];                    // {x,y,type:'key'|'exit'}
+let exitOpen=false,startTime=0,playing=false;
+const keysEl=document.getElementById("keys");
+function keyDots(){
+  keysEl.innerHTML="";
+  for(let i=0;i<keysNeed;i++){const d=document.createElement("div");d.className="key"+(i<keysGot?" got":"");keysEl.appendChild(d);}
+}
+function startLevel(){
+  grid=genMaze(MS);
+  px=1.5;py=1.5;pa=.7;
+  /* 放钥匙：距起点最远的通路格中随机取 */
+  const open=[];
+  for(let y=1;y<MS-1;y++)for(let x=1;x<MS-1;x++)
+    if(grid[y][x]===0&&!(x<3&&y<3))open.push([x,y]);
+  shuffle(open);
+  items=[];
+  const far=open.filter(([x,y])=>Math.hypot(x-1,y-1)>MS*.3);
+  for(let i=0;i<keysNeed;i++){const[x,y]=far[i*3%far.length];items.push({x:x+.5,y:y+.5,type:"key"});}
+  /* 出口：最远角 */
+  let ex=MS-2,ey=MS-2;
+  grid[ey][ex]=0;
+  items.push({x:ex+.5,y:ey+.5,type:"exit"});
+  keysGot=0;exitOpen=false;
+  keyDots();
+  document.getElementById("lv").textContent=`第 ${level} 层 · ${MS}×${MS}`;
+  document.getElementById("obj").textContent=`收集 ${keysNeed} 把钥匙 → 出口开启`;
+  startTime=performance.now();playing=true;
+  showMsg(`第 ${level} 层`,"找到所有钥匙，逃出迷宫");
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}}
+function showMsg(t,s){const m=document.getElementById("msg");
+  m.innerHTML=`${t}<small>${s||""}</small>`;m.classList.add("show");
+  clearTimeout(showMsg.t);showMsg.t=setTimeout(()=>m.classList.remove("show"),2400);}
+
+/* ================= 输入 ================= */
+const key={};
+addEventListener("keydown",e=>{
+  key[e.code]=true;
+  if(e.code==="KeyR"&&playing)startLevel();
+  if(e.code==="KeyM")mmScale=mmScale===6?10:6;
+  if(["ArrowUp","ArrowDown","Space"].includes(e.code))e.preventDefault();
+});
+addEventListener("keyup",e=>key[e.code]=false);
+let mmScale=6;
+const lock={on:false};
+cv.addEventListener("click",()=>{if(!lock.on){cv.requestPointerLock();lock.on=true;}});
+document.addEventListener("pointerlockchange",()=>{lock.on=document.pointerLockElement===cv;});
+document.addEventListener("mousemove",e=>{if(lock.on)pa+=e.movementX*.0026;});
+
+/* ================= 碰撞 ================= */
+function tryMove(nx,ny){
+  if(!hitWall(nx,py,.28))px=nx;
+  if(!hitWall(px,ny,.28))py=ny;
+}
+function hitWall(x,y,r){
+  for(const[dx,dy]of[[r,r],[r,-r],[-r,r],[-r,-r]])
+    if(grid[(y+dy)|0][(x+dx)|0]===1)return true;
+  return false;
+}
+
+/* ================= 更新 ================= */
+let bob=0;
+function update(dt){
+  const run=key.ShiftLeft||key.ShiftRight?1.7:1;
+  const sp=3.1*run*dt,rot=2.4*dt;
+  let mx=0,my=0;
+  if(key.KeyW||key.ArrowUp){mx+=Math.cos(pa);my+=Math.sin(pa);}
+  if(key.KeyS||key.ArrowDown){mx-=Math.cos(pa);my-=Math.sin(pa);}
+  if(key.KeyA){mx+=Math.sin(pa);my-=Math.cos(pa);}
+  if(key.KeyD){mx-=Math.sin(pa);my+=Math.cos(pa);}
+  if(key.ArrowLeft)pa-=rot;if(key.ArrowRight)pa+=rot;
+  if(key.KeyQ)pa-=rot;if(key.KeyE)pa+=rot;
+  const l=Math.hypot(mx,my);
+  if(l>0){
+    tryMove(px+mx/l*sp,py+my/l*sp);
+    bob+=dt*run*9;
+  }
+  /* 拾取 */
+  for(const it of items){
+    if(it.done)continue;
+    if(Math.hypot(it.x-px,it.y-py)<.55){
+      if(it.type==="key"){
+        it.done=true;keysGot++;keyDots();sfx(.35,880,.25,"triangle");
+        document.getElementById("obj").textContent=keysGot>=keysNeed
+          ?"✦ 出口已开启 — 寻找发光的门":"收集钥匙 "+keysGot+" / "+keysNeed;
+        if(keysGot>=keysNeed){exitOpen=true;showMsg("出口已开启","循光而去");}
+      }else if(it.type==="exit"){
+        if(exitOpen){
+          playing=false;sfx(.5,660,.5,"triangle");
+          const t=(performance.now()-startTime)/1000;
+          level++;MS=Math.min(35,MS+4);
+          showMsg("逃出成功",`用时 ${t.toFixed(1)}s — 进入第 ${level} 层`);
+          setTimeout(startLevel,1800);
+        }else{
+          showMsg("门被封印","先集齐所有钥匙");
+        }
+      }
+    }
+  }
+}
+
+/* ================= 光线投射渲染 ================= */
+const RAYS=480;
+const zbuf=new Float32Array(RAYS);
+function castRays(){
+  /* 先画天花板与地面，再画墙体，避免遮盖 */
+  const sky=ctx.createLinearGradient(0,0,0,H/2);
+  sky.addColorStop(0,"#02040a");sky.addColorStop(1,"#0a1420");
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H/2);
+  const fl=ctx.createLinearGradient(0,H/2,0,H);
+  fl.addColorStop(0,"#060a0e");fl.addColorStop(1,"#101a24");
+  ctx.fillStyle=fl;ctx.fillRect(0,H/2,W,H/2);
+  const fov=Math.PI/3;
+  ctx.save();ctx.scale(W/RAYS,1);
+  for(let i=0;i<RAYS;i++){
+    const a=pa-fov/2+fov*i/RAYS;
+    const d=cast(a);
+    zbuf[i]=d.dist;
+    const hWall=Math.min(H*2.2,H*.92/d.dist);
+    const y0=(H-hWall)/2+bobY();
+    /* 墙面明暗：距离雾 + 侧向明暗 */
+    const fog=Math.max(0,1-d.dist/13);
+    let base=d.side?46:72;
+    const r=base*fog*.55,g=(base+34)*fog*.62,b=(base+60)*fog*.75;
+    ctx.fillStyle=`rgb(${r|0},${g|0},${b|0})`;
+    ctx.fillRect(i,y0,RAYS/RAYS+1.2,hWall);
+    /* 墙面横缝纹理 */
+    if(fog>.25){
+      ctx.fillStyle=`rgba(0,0,0,${.28*fog})`;
+      const seam=(d.wallX*4%1)<.12;
+      if(seam)ctx.fillRect(i,y0+hWall*.31,1.2,hWall*.06),
+              ctx.fillRect(i,y0+hWall*.63,1.2,hWall*.06);
+    }
+  }
+  ctx.restore();
+}
+function cast(a){
+  const sin=Math.sin(a),cos=Math.cos(a);
+  let mapX=px|0,mapY=py|0;
+  const dX=Math.abs(1/cos),dY=Math.abs(1/sin);
+  let stepX,stepY,sideX,sideY;
+  if(cos<0){stepX=-1;sideX=(px-mapX)*dX;}else{stepX=1;sideX=(mapX+1-px)*dX;}
+  if(sin<0){stepY=-1;sideY=(py-mapY)*dY;}else{stepY=1;sideY=(mapY+1-py)*dY;}
+  let side=0,wallX=0;
+  for(let i=0;i<64;i++){
+    if(sideX<sideY){sideX+=dX;mapX+=stepX;side=0;}
+    else{sideY+=dY;mapY+=stepY;side=1;}
+    if(grid[mapY]&&grid[mapY][mapX]===1)break;
+  }
+  const dist=side?sideY-dY:sideX-dX;
+  const wx=side?px+dist*cos:py+dist*sin;
+  return{dist:Math.max(.05,dist),side,wallX:wx-Math.floor(wx)};
+}
+function bobY(){return Math.sin(bob)*3;}
+
+/* ================= 精灵（钥匙/出口）渲染 ================= */
+function drawSprites(){
+  const fov=Math.PI/3;
+  const items2=items.filter(i=>!i.done||i.type==="exit")
+    .map(i=>({i,d:Math.hypot(i.x-px,i.y-py)}))
+    .sort((a,b)=>b.d-a.d);
+  for(const{i,d}of items2){
+    const dx=i.x-px,dy=i.y-py;
+    /* 标准相机平面变换 */
+    const dirX=Math.cos(pa),dirY=Math.sin(pa);
+    const planeX=-dirY*Math.tan(fov/2),planeY=dirX*Math.tan(fov/2);
+    const det=planeX*dirY-dirX*planeY;
+    if(Math.abs(det)<1e-6)continue;
+    const trX=det*(dirY*dx-dirX*dy);
+    const trY=-det*(planeY*dx-planeX*dy);
+    if(trY<=.1)continue;
+    const scrX=(W/2)*(1+trX/trY);
+    const sprH=Math.abs(H*.9/trY);
+    /* 遮挡：采样 zbuf */
+    const col=(scrX/W*RAYS)|0;
+    if(col<0||col>=RAYS||zbuf[col]<trY)continue;
+    const cy=H/2+bobY()*.4;
+    if(i.type==="key"){
+      const r=sprH*.09;
+      const glow=ctx.createRadialGradient(scrX,cy-sprH*.06,0,scrX,cy-sprH*.06,r*2.4);
+      glow.addColorStop(0,"rgba(255,220,110,.9)");glow.addColorStop(1,"rgba(255,220,110,0)");
+      ctx.fillStyle=glow;ctx.fillRect(scrX-r*3,cy-sprH*.06-r*3,r*6,r*6);
+      ctx.beginPath();ctx.arc(scrX,cy-sprH*.06,r,0,7);ctx.strokeStyle="#ffd76e";ctx.lineWidth=Math.max(1.5,r*.5);ctx.stroke();
+      ctx.fillStyle="#ffd76e";ctx.fillRect(scrX-r*.25,cy-sprH*.06,r*.5,r*1.9);
+    }else{
+      /* 出口门：集齐后发绿光脉冲 */
+      const open=exitOpen;
+      const pulse=.5+.5*Math.sin(performance.now()/300);
+      const w=sprH*.5,h2=sprH*.85;
+      ctx.fillStyle=open?`rgba(90,255,150,${.5+pulse*.4})`:"rgba(160,60,60,.8)";
+      ctx.fillRect(scrX-w/2,cy-h2/2,w,h2);
+      ctx.strokeStyle=open?"#9fffc8":"#6a2a2a";ctx.lineWidth=Math.max(1,sprH*.02);
+      ctx.strokeRect(scrX-w/2,cy-h2/2,w,h2);
+      if(open){
+        const g2=ctx.createRadialGradient(scrX,cy,0,scrX,cy,w*2.2);
+        g2.addColorStop(0,`rgba(120,255,180,${.35+pulse*.25})`);g2.addColorStop(1,"rgba(120,255,180,0)");
+        ctx.fillStyle=g2;ctx.fillRect(scrX-w*2.5,cy-w*2.5,w*5,w*5);
+      }
+    }
+  }
+}
+
+/* ================= 小地图 ================= */
+function drawMap(){
+  const n=MS,s=mmScale;
+  const sz=Math.min(180,n*s);
+  mctx.clearRect(0,0,180,180);
+  mctx.save();
+  /* 以玩家为中心 */
+  mctx.translate(90,90);
+  mctx.translate(-(px*s),-(py*s));
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    if(grid[y][x]===1){
+      mctx.fillStyle="#173247";
+      mctx.fillRect(x*s,y*s,s,s);
+    }
+  }
+  /* 视野扇形 */
+  mctx.fillStyle="rgba(127,212,255,.14)";
+  mctx.beginPath();mctx.moveTo(px*s,py*s);
+  mctx.arc(px*s,py*s,s*5,pa-.55,pa+.55);mctx.closePath();mctx.fill();
+  /* 物品 */
+  for(const it of items){
+    if(it.done)continue;
+    mctx.beginPath();
+    if(it.type==="key"){mctx.fillStyle="#ffd76e";mctx.arc(it.x*s,it.y*s,2.4,0,7);}
+    else{mctx.fillStyle=exitOpen?"#5aff96":"#c05050";mctx.arc(it.x*s,it.y*s,3.2,0,7);}
+    mctx.fill();
+  }
+  /* 玩家 */
+  mctx.fillStyle="#7fd4ff";
+  mctx.beginPath();mctx.arc(px*s,py*s,3,0,7);mctx.fill();
+  mctx.strokeStyle="#7fd4ff";mctx.lineWidth=1.4;
+  mctx.beginPath();mctx.moveTo(px*s,py*s);
+  mctx.lineTo(px*s+Math.cos(pa)*7,py*s+Math.sin(pa)*7);mctx.stroke();
+  mctx.restore();
+}
+
+/* ================= 准星 ================= */
+function drawCross(){
+  ctx.strokeStyle="rgba(190,230,255,.6)";ctx.lineWidth=1.4;
+  ctx.beginPath();
+  ctx.moveTo(W/2-9,H/2);ctx.lineTo(W/2-3,H/2);
+  ctx.moveTo(W/2+3,H/2);ctx.lineTo(W/2+9,H/2);
+  ctx.moveTo(W/2,H/2-9);ctx.lineTo(W/2,H/2-3);
+  ctx.moveTo(W/2,H/2+3);ctx.lineTo(W/2,H/2+9);
+  ctx.stroke();
+}
+
+/* ================= 主循环 ================= */
+let last=performance.now(),tick=0;
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(playing)update(dt);
+  castRays();
+  drawSprites();
+  drawCross();
+  drawMap();
+  if(playing){
+    tick+=dt;
+    if(tick>.25){tick=0;
+      const t=(now-startTime)/1000;
+      document.getElementById("timer").textContent=
+        `用时 ${String(t/60|0).padStart(2,"0")}:${String(t%60|0).padStart(2,"0")}`;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+startLevel();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

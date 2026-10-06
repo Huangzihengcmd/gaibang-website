@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AI 能力检测 · 题目详情">
+<title>题目详情 · AI 能力检测</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --line: #e3e6ea;
+  --text: #1a1d21; --muted: #6b7280; --accent: #1f6feb;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+               "PingFang SC", "Hiragino Sans GB", sans-serif; line-height: 1.6;
+}
+.wrap { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.topbar { background: #fff; border-bottom: 1px solid var(--line); padding: 18px 0; margin-bottom: 30px; }
+.topbar .wrap { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.brand { font-size: 20px; font-weight: 700; }
+.topbar nav { margin-left: auto; }
+.topbar nav a { color: var(--muted); text-decoration: none; font-size: 13px; margin-left: 18px; }
+.topbar nav a:hover { color: var(--accent); }
+
+.back { margin-bottom: 18px; }
+.back a { color: var(--accent); text-decoration: none; font-size: 13px; }
+
+h1 { font-size: 24px; margin: 0 0 6px; font-weight: 700; }
+.meta { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+.panel {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 22px 24px; margin-bottom: 24px;
+}
+.panel h2 { font-size: 15px; margin: 0 0 12px; font-weight: 650; color: var(--muted);
+  text-transform: none; letter-spacing: 0; }
+.prompt {
+  white-space: pre-wrap; font-size: 14px; color: #374151;
+  background: #fafbfc; border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; margin: 0; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 13px; line-height: 1.75;
+}
+
+.sub-list { list-style: none; padding: 0; margin: 0; }
+.sub-list li {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 0; border-bottom: 1px solid var(--line);
+}
+.sub-list li:last-child { border-bottom: none; }
+.sub-name { font-size: 14px; font-weight: 600; min-width: 220px; }
+.sub-date { font-size: 12px; color: var(--muted); }
+.sub-list li a {
+  margin-left: auto; font-size: 13px; color: var(--accent);
+  text-decoration: none; border: 1px solid var(--accent);
+  border-radius: 6px; padding: 5px 14px;
+}
+.sub-list li a:hover { background: var(--accent); color: #fff; }
+.pending-row { color: #9aa1ab; font-size: 14px; }
+.pending-row span { margin-left: auto; font-size: 12px; }
+
+footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <span class="brand">AI 能力检测</span>
+    <nav>
+      <a href="index.html">全部题目</a>
+      <a href="https://gaibang.pages.dev/sites.html">丐帮分舵</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="back"><a href="index.html">← 返回题目列表</a></div>
+  <h1 id="title">加载中…</h1>
+  <div class="meta" id="meta"></div>
+
+  <div class="panel">
+    <h2>题目要求（原文）</h2>
+    <pre class="prompt" id="prompt"></pre>
+  </div>
+
+  <div class="panel">
+    <h2>各模型提交</h2>
+    <ul class="sub-list" id="subs"></ul>
+  </div>
+
+  <footer>题目原文取自 <code>D:\AI能力检测\说明</code>，未作任何改写。</footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+function param(name) {
+  var m = new RegExp("[?&]" + name + "=([^&]*)").exec(location.search);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+function render() {
+  var d = window.AIBENCH;
+  var id = param("id");
+  var t = null;
+  if (d) d.tests.forEach(function(x) { if (x.id === id) t = x; });
+
+  if (!t) {
+    document.getElementById("title").textContent = "未找到该题目";
+    return;
+  }
+  document.title = t.name + " · AI 能力检测";
+  document.getElementById("title").textContent = t.name;
+  document.getElementById("prompt").textContent =
+    t.prompt && t.prompt.trim() ? t.prompt : "（说明文件缺失或为空）";
+
+  var done = d.models.filter(function(m) { return m.works && m.works[t.id]; });
+  var pending = d.models.filter(function(m) { return !(m.works && m.works[t.id]); });
+  document.getElementById("meta").textContent =
+    "共 " + done.length + " 份提交 · 参与模型 " + d.models.length + " 个";
+
+  var html = done.map(function(m) {
+    var dt = (m.dates || {})[t.id] || "";
+    return "<li><span class='sub-name'>" + esc(m.name) + "</span>" +
+      "<span class='sub-date'>" + (dt || "日期未知") + "</span>" +
+      "<a href='works/" + esc(m.works[t.id]) + "' target='_blank' rel='noopener'>打开作品</a></li>";
+  }).join("") + pending.map(function(m) {
+    return "<li class='pending-row'><span class='sub-name'>" + esc(m.name) +
+      "</span><span>未提交</span></li>";
+  }).join("");
+  document.getElementById("subs").innerHTML = html;
+}
+
+window.onload = render;
+</script>
+
+</body>
+</html>
