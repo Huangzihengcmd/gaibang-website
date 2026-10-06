@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>3D Maze — Neon Labyrinth</title>
+<style>
+  :root{--bg:#05070a;--fg:#eaf7ff;--cyan:#55f4ff;--cyan2:#0cc7e6;--pink:#ff3dac;--green:#8cff8c}
+  *{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030509;color:var(--fg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  #wrap{position:relative;width:100%;height:100%;background:#000;cursor:crosshair}
+  canvas{display:block;width:100%;height:100%;image-rendering:auto}
+  .hud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:18px 20px 20px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .brand{font-size:12px;letter-spacing:.22em;color:#b7dce8;text-transform:uppercase;text-shadow:0 0 14px #00d8ff55}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .pill{border:1px solid #64e9ff33;background:#06101899;backdrop-filter:blur(6px);padding:8px 11px;border-radius:999px;font-size:11px;letter-spacing:.08em;color:#c9eff7;box-shadow:inset 0 0 18px #09b6df14,0 0 18px #00a8d90f}
+  .bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}
+  .help{padding:10px 12px;border:1px solid #ffffff12;background:#05090dc7;backdrop-filter:blur(5px);font-size:11px;line-height:1.5;color:#9db8c1;border-radius:10px}
+  .crosshair{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);opacity:.75}
+  .crosshair:before,.crosshair:after{content:"";position:absolute;background:#dffcff}
+  .crosshair:before{left:10px;top:0;width:2px;height:22px;box-shadow:0 0 10px #55f4ff}
+  .crosshair:after{top:10px;left:0;width:22px;height:2px;box-shadow:0 0 10px #55f4ff}
+  #mini{position:absolute;right:20px;bottom:20px;width:170px;height:170px;border-radius:12px;border:1px solid #64e9ff38;background:#020608b8;box-shadow:inset 0 0 30px #00bcd42b,0 0 30px #0009;pointer-events:none}
+  #overlay{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(circle at center,#0c1a21dd,#020305f4 70%);z-index:5}
+  .panel{width:min(560px,90vw);padding:30px;border:1px solid #6aeaff35;background:#061017e8;backdrop-filter:blur(12px);border-radius:20px;box-shadow:0 30px 80px #000b,inset 0 0 50px #00cde70c;text-align:center}
+  h1{margin:0 0 10px;font-size:clamp(34px,7vw,64px);letter-spacing:.09em;font-weight:800;line-height:1;text-shadow:0 0 26px #00d9ff2e}
+  .sub{margin:0 auto 22px;color:#9eb4bf;line-height:1.7;font-size:14px;max-width:480px}
+  button{appearance:none;border:1px solid #75f6ff55;background:linear-gradient(135deg,#0a1e27,#07212b);color:#e8ffff;padding:12px 18px;border-radius:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;box-shadow:0 0 22px #00d2ff14,inset 0 0 18px #00d2ff0e}
+  button:hover{border-color:#8bfbffb0;box-shadow:0 0 32px #00d2ff23,inset 0 0 22px #00d2ff12}
+  .kbd{display:inline-block;padding:1px 5px;border:1px solid #ffffff22;border-radius:4px;background:#fff1;font-family:ui-monospace,monospace;font-size:10px;color:#d7f7ff}
+  .hide{display:none!important}
+  #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);padding:10px 16px;border:1px solid #7af7ff55;border-radius:999px;background:#041117dd;color:#dffeff;font-size:12px;letter-spacing:.12em;opacity:0;transition:opacity .25s;pointer-events:none;z-index:4}
+  #flash{position:absolute;inset:0;background:#ffffff;opacity:0;pointer-events:none;z-index:3}
+  @media (max-width:650px){#mini{width:128px;height:128px;right:12px;bottom:12px}.hud{padding:12px}.help{max-width:60vw}.stats{gap:6px}.pill{padding:6px 8px}}
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="view" aria-label="3D第一人称迷宫"></canvas>
+  <canvas id="mini" aria-label="迷宫小地图"></canvas>
+  <div class="crosshair" aria-hidden="true"></div>
+  <div id="flash"></div>
+  <div id="toast"></div>
+  <div class="hud" aria-hidden="true">
+    <div class="top">
+      <div class="brand">NEON LABYRINTH / 3D MAZE</div>
+      <div class="stats">
+        <div class="pill">TIME <span id="time">00:00.0</span></div>
+        <div class="pill">DIST <span id="dist">0</span>m</div>
+        <div class="pill">STATUS <span id="status">EXPLORE</span></div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="help">WASD / 方向键移动 · 鼠标移动转向 · 点击进入/锁定鼠标 · <span class="kbd">R</span> 重置迷宫</div>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="panel" id="startPanel">
+      <h1>NEON<br>MAZE</h1>
+      <p class="sub">一座被霓虹灯与雾气包围的第一人称迷宫。找到发光出口，完成逃脱。墙壁会阻挡你，视野之外的空间隐藏着真正的路线。</p>
+      <button id="startBtn">ENTER THE MAZE</button>
+      <div style="margin-top:14px;color:#718994;font-size:11px">建议使用鼠标 + WASD · 支持触摸屏方向控制</div>
+    </div>
+    <div class="panel hide" id="winPanel">
+      <div style="color:#8cff8c;font-size:12px;letter-spacing:.25em;margin-bottom:10px">ESCAPE COMPLETE</div>
+      <h1 style="font-size:48px">YOU<br>ESCAPED</h1>
+      <p class="sub">你已经穿过所有拐角，抵达迷宫出口。</p>
+      <div style="font:700 20px ui-monospace,monospace;margin-bottom:20px" id="finalTime">00:00.0</div>
+      <button id="againBtn">RUN AGAIN</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const view = document.getElementById('view');
+  const ctx = view.getContext('2d', { alpha:false });
+  const mini = document.getElementById('mini');
+  const mctx = mini.getContext('2d');
+  const wrap = document.getElementById('wrap');
+  const overlay = document.getElementById('overlay');
+  const startPanel = document.getElementById('startPanel');
+  const winPanel = document.getElementById('winPanel');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const timeEl = document.getElementById('time');
+  const distEl = document.getElementById('dist');
+  const statusEl = document.getElementById('status');
+  const finalTime = document.getElementById('finalTime');
+  const toast = document.getElementById('toast');
+  const flash = document.getElementById('flash');
+
+  const FOV = Math.PI / 3;
+  const TAU = Math.PI * 2;
+  const wallH = 1;
+  const moveSpeed = 2.6;
+  const rotSpeed = 2.0;
+  const mazeW = 25, mazeH = 25;
+  const CELL = 1;
+  const map = [];
+  let seed = 0;
+
+  function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
+
+  function generateMaze() {
+    const rng = mulberry32((Date.now() ^ (Math.random()*0xffffffff)) >>> 0);
+    for(let y=0;y<mazeH;y++){map[y]=[];for(let x=0;x<mazeW;x++)map[y][x]=1;}
+    const stack=[[1,1]]; map[1][1]=0;
+    while(stack.length){
+      const [x,y]=stack[stack.length-1];
+      const dirs=[[2,0],[-2,0],[0,2],[0,-2]].sort(()=>rng()-.5);
+      const candidates=[];
+      for(const [dx,dy] of dirs){const nx=x+dx,ny=y+dy;if(nx>0&&nx<mazeW-1&&ny>0&&ny<mazeH-1&&map[ny][nx])candidates.push([nx,ny,dx,dy]);}
+      if(!candidates.length){stack.pop();continue;}
+      const [nx,ny,dx,dy]=candidates[0]; map[y+dy/2][x+dx/2]=0; map[ny][nx]=0; stack.push([nx,ny]);
+    }
+    // carve a few loops so the maze feels less like a strict tree
+    for(let i=0;i<mazeW*2;i++){
+      const x=1+Math.floor(rng()*(mazeW-2)), y=1+Math.floor(rng()*(mazeH-2));
+      if(map[y][x]===1) {
+        const horizontal = map[y][x-1]===0 && map[y][x+1]===0;
+        const vertical = map[y-1][x]===0 && map[y+1][x]===0;
+        if(horizontal||vertical)map[y][x]=0;
+      }
+    }
+    // ensure starting region and exit are open
+    map[1][1]=0; map[mazeH-2][mazeW-2]=0;
+    // small diagonal approach to exit
+    map[mazeH-2][mazeW-3]=0; map[mazeH-3][mazeW-2]=0;
+    seed++;
+  }
+
+  function isWall(x,y){
+    const ix=Math.floor(x), iy=Math.floor(y);
+    if(ix<0||iy<0||ix>=mazeW||iy>=mazeH)return true;
+    return map[iy][ix]===1;
+  }
+
+  const player={x:1.5,y:1.5,a:0};
+  const exit={x:mazeW-1.5,y:mazeH-1.5};
+  let started=false, won=false, startTime=0, elapsed=0, last=performance.now();
+  let distance=0;
+  const keys=new Set();
+  let mouseCaptured=false;
+  let bob=0, bobT=0;
+
+  function resetGame(){
+    generateMaze();
+    player.x=1.5;player.y=1.5;player.a=0;
+    elapsed=0;distance=0;won=false;started=true;startTime=performance.now();
+    overlay.classList.add('hide'); winPanel.classList.add('hide'); startPanel.classList.remove('hide');
+    statusEl.textContent='EXPLORE';
+    drawMini();
+    try{wrap.requestPointerLock?.()}catch(e){}
+    toastMessage('FIND THE EXIT');
+  }
+
+  function startGame(){
+    if(!started) resetGame(); else {overlay.classList.add('hide');try{wrap.requestPointerLock?.()}catch(e){}}
+  }
+
+  startBtn.addEventListener('click',startGame);
+  againBtn.addEventListener('click',resetGame);
+
+  function toastMessage(text){
+    toast.textContent=text;toast.style.opacity='1';clearTimeout(toastMessage.t);
+    toastMessage.t=setTimeout(()=>toast.style.opacity='0',1200);
+  }
+
+  document.addEventListener('keydown',e=>{
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+    keys.add(e.key.toLowerCase());
+    if(e.key.toLowerCase()==='r')resetGame();
+  });
+  document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+  wrap.addEventListener('click',()=>{if(started&&!won){try{wrap.requestPointerLock?.()}catch(e){}}});
+  document.addEventListener('pointerlockchange',()=>{mouseCaptured=document.pointerLockElement===wrap;});
+  document.addEventListener('mousemove',e=>{if(mouseCaptured&&!won){player.a+=e.movementX*0.0027;}});
+
+  // Touch: drag to rotate; two virtual zones handle movement.
+  let touchStart=null;
+  wrap.addEventListener('touchstart',e=>{const t=e.changedTouches[0];touchStart={x:t.clientX,y:t.clientY};},{passive:true});
+  wrap.addEventListener('touchmove',e=>{if(!touchStart)return;const t=e.changedTouches[0];player.a+=(t.clientX-touchStart.x)*0.004;touchStart={x:t.clientX,y:t.clientY};},{passive:true});
+  wrap.addEventListener('touchend',()=>touchStart=null,{passive:true});
+
+  function tryMove(dx,dy){
+    const radius=.20;
+    const nx=player.x+dx, ny=player.y+dy;
+    if(!isWall(nx+Math.sign(dx)*radius, player.y) && !isWall(nx,player.y+Math.sign(dy)*radius)){
+      player.x=nx;player.y=ny;distance+=Math.hypot(dx,dy);
+    } else if(!isWall(nx+Math.sign(dx)*radius,player.y)){player.x=nx;distance+=Math.abs(dx)}
+    else if(!isWall(player.x,ny+Math.sign(dy)*radius)){player.y=ny;distance+=Math.abs(dy)}
+  }
+
+  function update(dt){
+    if(!started||won)return;
+    const forward = keys.has('w')||keys.has('arrowup');
+    const back = keys.has('s')||keys.has('arrowdown');
+    const left = keys.has('a');
+    const right = keys.has('d');
+    if(keys.has('arrowleft'))player.a-=rotSpeed*dt;
+    if(keys.has('arrowright'))player.a+=rotSpeed*dt;
+    let vx=0,vy=0;
+    if(forward){vx+=Math.cos(player.a)*moveSpeed*dt;vy+=Math.sin(player.a)*moveSpeed*dt}
+    if(back){vx-=Math.cos(player.a)*moveSpeed*dt*.74;vy-=Math.sin(player.a)*moveSpeed*dt*.74}
+    if(left){vx+=Math.cos(player.a-Math.PI/2)*moveSpeed*dt*.72;vy+=Math.sin(player.a-Math.PI/2)*moveSpeed*dt*.72}
+    if(right){vx+=Math.cos(player.a+Math.PI/2)*moveSpeed*dt*.72;vy+=Math.sin(player.a+Math.PI/2)*moveSpeed*dt*.72}
+    if(vx||vy){tryMove(vx,vy);bobT+=dt*9;bob=Math.sin(bobT)*.018}
+    else {bob*=.92}
+    elapsed=performance.now()-startTime;
+    const nearExit=Math.hypot(player.x-exit.x,player.y-exit.y)<0.65;
+    if(nearExit){won=true;statusEl.textContent='ESCAPED';flash.style.opacity='.7';setTimeout(()=>flash.style.opacity='0',60);showWin();}
+    timeEl.textContent=formatTime(elapsed);distEl.textContent=distance.toFixed(1);statusEl.textContent=nearExit?'EXIT':'EXPLORE';
+  }
+
+  function formatTime(ms){const t=ms/1000,s=Math.floor(t%60),m=Math.floor(t/60);return `${String(m).padStart(2,'0')}:${s.toString().padStart(2,'0')}.${String(Math.floor((t%1)*10))}`}
+  function showWin(){finalTime.textContent=formatTime(elapsed);overlay.classList.remove('hide');startPanel.classList.add('hide');winPanel.classList.remove('hide');try{document.exitPointerLock?.()}catch(e){} }
+
+  function resize(){
+    const dpr=Math.min(2,devicePixelRatio||1); const w=innerWidth,h=innerHeight;
+    view.width=Math.floor(w*dpr);view.height=Math.floor(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+    drawMini();
+  }
+  addEventListener('resize',resize);resize();
+
+  function shadeWall(distance,side,hitX){
+    // Palette based on local wall coordinate; creates vertical luminous strips.
+    const glow=Math.max(0,1-distance/13);
+    const stripe=(Math.sin(hitX*12.4)+1)/2;
+    const base=side?14:22;
+    return `rgb(${Math.floor(base+16*glow+12*stripe)},${Math.floor(base+24*glow+22*stripe)},${Math.floor(base+28*glow+34*stripe)})`;
+  }
+
+  function render3D(){
+    const w=innerWidth,h=innerHeight;
+    const horizon=Math.floor(h*(.51+bob));
+    // sky gradient
+    const sky=ctx.createLinearGradient(0,0,0,horizon);
+    sky.addColorStop(0,'#02050b');sky.addColorStop(.52,'#07131a');sky.addColorStop(1,'#10262d');ctx.fillStyle=sky;ctx.fillRect(0,0,w,horizon);
+    // ceiling glow lines
+    for(let i=0;i<7;i++){
+      const yy=horizon*(.12+i*.11);ctx.fillStyle=`rgba(30,190,208,${.025+i*.006})`;ctx.fillRect(0,yy,w,1);
+    }
+    // floor gradient
+    const floor=ctx.createLinearGradient(0,horizon,0,h);floor.addColorStop(0,'#112027');floor.addColorStop(.42,'#071015');floor.addColorStop(1,'#010204');ctx.fillStyle=floor;ctx.fillRect(0,horizon,w,h-horizon);
+    // floor lane guides
+    ctx.globalAlpha=.22;
+    for(let i=1;i<18;i++){
+      const y=horizon + (i/18)**1.7*(h-horizon);ctx.strokeStyle='#36dae044';ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+
+    const rays=Math.max(260,Math.floor(w/2));
+    const colW=w/rays; const z=[];
+    for(let x=0;x<rays;x++){
+      const cameraX=2*x/rays-1;
+      const rayA=player.a + Math.atan(cameraX*Math.tan(FOV/2));
+      const rx=Math.cos(rayA), ry=Math.sin(rayA);
+      let mapX=Math.floor(player.x), mapY=Math.floor(player.y);
+      let ddx=Math.abs(1/(rx||1e-9)), ddy=Math.abs(1/(ry||1e-9));
+      let stepX,stepY,sideDistX,sideDistY;
+      if(rx<0){stepX=-1;sideDistX=(player.x-mapX)*ddx}else{stepX=1;sideDistX=(mapX+1-player.x)*ddx}
+      if(ry<0){stepY=-1;sideDistY=(player.y-mapY)*ddy}else{stepY=1;sideDistY=(mapY+1-player.y)*ddy}
+      let hit=false,side=0,steps=0;
+      while(!hit&&steps++<80){if(sideDistX<sideDistY){sideDistX+=ddx;mapX+=stepX;side=0}else{sideDistY+=ddy;mapY+=stepY;side=1}if(isWall(mapX+.001,mapY+.001))hit=true}
+      let dist=side===0?sideDistX-ddx:sideDistY-ddy;dist*=Math.cos(rayA-player.a);dist=Math.max(.0001,dist);
+      const lineH=Math.min(h*3,h/dist); const top=horizon-lineH/2;const bottom=top+lineH;
+      let wallX=side===0?player.y+dist*ry:player.x+dist*rx;wallX-=Math.floor(wallX);
+      ctx.fillStyle=shadeWall(dist,side,wallX);ctx.fillRect(x*colW,top,colW+1,lineH);
+      // emissive vertical seams
+      const seam=Math.abs(wallX-.5)<.025;
+      if(seam&&dist<10){ctx.fillStyle=`rgba(42,232,242,${Math.max(0,.28-dist*.02)})`;ctx.fillRect(x*colW,top,colW+1,lineH)}
+      // distant floor fog at the base
+      const fog=Math.min(.72,dist/20);ctx.fillStyle=`rgba(0,0,0,${fog*.26})`;ctx.fillRect(x*colW,bottom,colW+1,h-bottom);
+      z.push(dist);
+    }
+    // Draw a glowing exit marker in projected screen-space if visible.
+    const exdx=exit.x-player.x, exdy=exit.y-player.y; const exDist=Math.hypot(exdx,exdy); let angle=Math.atan2(exdy,exdx)-player.a;
+    while(angle<-Math.PI)angle+=TAU;while(angle>Math.PI)angle-=TAU;
+    if(Math.abs(angle)<FOV*.65){
+      const sx=w/2 + Math.tan(angle)/Math.tan(FOV/2)*w/2;
+      const size=Math.max(12,Math.min(190,h/exDist*.65));
+      const sy=horizon-h/exDist*.36;
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      const g=ctx.createRadialGradient(sx,sy,0,sx,sy,size);g.addColorStop(0,'#afffb4');g.addColorStop(.18,'#45ff9a88');g.addColorStop(1,'#45ff9a00');ctx.fillStyle=g;ctx.beginPath();ctx.arc(sx,sy,size,0,TAU);ctx.fill();
+      ctx.strokeStyle='#a9ffcb';ctx.lineWidth=2;ctx.shadowBlur=16;ctx.shadowColor='#5cffaa';ctx.strokeRect(sx-size*.22,sy-size*.34,size*.44,size*.68);ctx.restore();
+    }
+    // vignette and scanline
+    const v=ctx.createRadialGradient(w/2,h/2,Math.min(w,h)*.2,w/2,h/2,Math.max(w,h)*.7);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.68)');ctx.fillStyle=v;ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='rgba(180,240,255,.025)';for(let y=0;y<h;y+=4)ctx.fillRect(0,y,w,1);
+  }
+
+  function drawMini(){
+    const w=mini.clientWidth,h=mini.clientHeight,dpr=Math.min(2,devicePixelRatio||1);mini.width=w*dpr;mini.height=h*dpr;mctx.setTransform(dpr,0,0,dpr,0,0);
+    mctx.clearRect(0,0,w,h);mctx.fillStyle='#030709';mctx.fillRect(0,0,w,h);
+    const s=Math.min(w/mazeW,h/mazeH)*.88, ox=(w-mazeW*s)/2,oy=(h-mazeH*s)/2;
+    for(let y=0;y<mazeH;y++)for(let x=0;x<mazeW;x++){mctx.fillStyle=map[y][x]?'#11232a':'#061015';mctx.fillRect(ox+x*s,oy+y*s,s+.4,s+.4)}
+    // exit
+    mctx.fillStyle='#66ff9e';mctx.shadowBlur=10;mctx.shadowColor='#66ff9e';mctx.fillRect(ox+(mazeW-1.5)*s-2,oy+(mazeH-1.5)*s-2,4,4);
+    // player cone
+    const px=ox+player.x*s,py=oy+player.y*s;mctx.save();mctx.translate(px,py);mctx.rotate(player.a);mctx.fillStyle='#55f4ff44';mctx.beginPath();mctx.moveTo(0,0);mctx.lineTo(28,-8);mctx.lineTo(28,8);mctx.closePath();mctx.fill();mctx.fillStyle='#dfffff';mctx.beginPath();mctx.arc(0,0,3,0,TAU);mctx.fill();mctx.restore();mctx.shadowBlur=0;
+  }
+
+  function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);render3D();drawMini();requestAnimationFrame(loop)}
+  generateMaze();drawMini();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

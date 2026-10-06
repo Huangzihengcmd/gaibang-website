@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AI 能力检测——同一道测试题，看看各家 AI 交出什么答卷。按题目分组，题目下挂各模型作品。">
+<meta name="keywords" content="AI能力检测,AI评测,大模型对比,丐帮">
+<title>AI 能力检测 · 丐帮</title>
+<link rel="icon" href="../logo.jpg">
+<link rel="stylesheet" href="../style.css">
+<style>
+header { text-align: center; position: relative; padding: 15px 0; }
+.site-logo {
+  width: 80px; height: 80px; object-fit: contain;
+  position: absolute; left: 30px; top: 50%;
+  transform: translateY(-50%); z-index: 10;
+}
+header h1 { margin: 0 auto; position: relative; z-index: 5; color: #fff; }
+.container { max-width: 980px; margin: 30px auto; padding: 0 20px; }
+.page-title { text-align: center; color: #ffd700; font-size: 30px; margin-bottom: 8px; }
+.page-sub { text-align: center; color: #aaa; font-size: 14px; margin-bottom: 8px; }
+.page-note {
+  text-align: center; color: #666; font-size: 12px; margin-bottom: 32px;
+}
+.card {
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,215,0,0.2);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 22px;
+}
+.card h2 {
+  color: #ffd700; font-size: 21px; margin: 0 0 12px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.card h2 .count {
+  font-size: 12px; color: #000; background: #ffd700;
+  padding: 2px 9px; border-radius: 20px; font-weight: normal;
+}
+.card .desc { color: #ddd; font-size: 14px; line-height: 1.8; margin-bottom: 16px; }
+.card .label { color: #888; font-size: 12px; margin-bottom: 10px; letter-spacing: 1px; }
+.models { display: flex; flex-wrap: wrap; gap: 10px; }
+.models a, .models span.pending {
+  display: inline-block; padding: 7px 14px; border-radius: 8px;
+  font-size: 13px; text-decoration: none; transition: 0.2s;
+}
+.models a {
+  background: rgba(255,215,0,0.12);
+  border: 1px solid rgba(255,215,0,0.5);
+  color: #ffd700;
+}
+.models a:hover { background: #ffd700; color: #000; }
+.models span.pending {
+  background: rgba(255,255,255,0.05);
+  border: 1px dashed rgba(255,255,255,0.2);
+  color: #777; cursor: default;
+}
+.footer-note {
+  text-align: center; color: #666; font-size: 13px;
+  margin: 40px 0 20px; line-height: 1.8;
+}
+.footer-note a { color: #ffd700; text-decoration: none; }
+</style>
+</head>
+
+<body>
+<header>
+  <img src="../logo.jpg" class="site-logo" alt="丐帮Logo">
+  <h1 class="floating">丐帮</h1>
+  <nav>
+      <ul>
+          <li><a href="../index.html">首页</a></li>
+          <li><a href="../about.html">帮派介绍</a></li>
+          <li><a href="../news.html">新闻</a></li>
+          <li><a href="../sites.html">分舵</a></li>
+          <li><a href="../contact.html">联系</a></li>
+      </ul>
+  </nav>
+</header>
+
+<div class="container">
+  <h2 class="page-title">🧪 AI 能力检测</h2>
+  <p class="page-sub">同一道题，看看各家 AI 交出什么答卷</p>
+  <p class="page-note">按「测试题目」分组 · 点模型名字即可打开它做的作品</p>
+
+  <div id="testList"></div>
+
+  <div class="footer-note">
+    有新作品？丢进 <code>D:\AI能力检测</code> 对应文件夹，跑一下导入脚本即可自动更新本页。<br>
+    <a href="../sites.html">← 回分舵</a> · <a href="../index.html">回丐帮首页</a>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+function render() {
+  const data = window.AIBENCH;
+  const box = document.getElementById('testList');
+  if (!data || !data.tests) {
+    box.innerHTML = '<p style="color:#e74c3c;text-align:center">数据加载失败，请检查 data.js</p>';
+    return;
+  }
+
+  box.innerHTML = data.tests.map(t => {
+    // 有作品的模型
+    const done = data.models.filter(m => m.works && m.works[t.id]);
+    // 还没交的模型
+    const pending = data.models.filter(m => !(m.works && m.works[t.id]));
+
+    const doneHtml = done.map(m => `
+      <a href="works/${m.works[t.id]}" target="_blank" rel="noopener">${m.name}</a>
+    `).join('');
+    const pendingHtml = pending.map(m => `
+      <span class="pending">${m.name} · 制作中</span>
+    `).join('');
+
+    return `
+      <div class="card">
+        <h2>${t.icon || ''} ${t.name} <span class="count">${done.length} 份答卷</span></h2>
+        <div class="desc">${t.desc}</div>
+        <div class="label">参与模型</div>
+        <div class="models">${doneHtml}${pendingHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.onload = render;
+</script>
+
+</body>
+</html>

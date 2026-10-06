@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASTRO-CHRONO · 机械天文腕表</title>
+<style>
+  :root{
+    --bg:#0c0c0f; --dial:#101318; --dial2:#171b22; --gold:#c9a86a; --gold2:#8a744c;
+    --steel:#b8bec8; --ink:#e8e4d8; --red:#c8452e; --blue:#2e5fa3; --night:#0a0e1a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;background:radial-gradient(1200px 800px at 50% 30%,#1a1d24 0%,var(--bg) 70%);
+    font-family:"Segoe UI","Microsoft YaHei",sans-serif;padding:24px;
+  }
+  /* ===== 表壳 ===== */
+  .watch{
+    width:min(92vw,560px);aspect-ratio:1;border-radius:50%;position:relative;
+    background:conic-gradient(from 0deg,#3a3d44 0deg,#0e0f12 40deg,#4a4e57 80deg,#14161a 130deg,
+      #43464e 190deg,#0e0f12 250deg,#4a4e57 310deg,#3a3d44 360deg);
+    box-shadow:0 30px 80px rgba(0,0,0,.75),0 4px 18px rgba(0,0,0,.6),inset 0 0 0 2px #55595f;
+    padding:26px;
+  }
+  .bezel{
+    position:absolute;inset:14px;border-radius:50%;
+    background:conic-gradient(from 30deg,#26282d,#3c4048 60deg,#1b1d22 140deg,#3a3e46 220deg,#15171b 300deg,#26282d);
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.9),inset 0 -1px 3px rgba(255,255,255,.06);
+  }
+  .bezel::after{ /* 表圈刻度 */
+    content:"";position:absolute;inset:6px;border-radius:50%;
+    background:repeating-conic-gradient(var(--gold2) 0deg .7deg,transparent .7deg 30deg);
+    -webkit-mask:radial-gradient(circle,transparent 96%,#000 96.5%);mask:radial-gradient(circle,transparent 96%,#000 96.5%);
+  }
+  /* ===== 主表盘 ===== */
+  .dial{
+    position:absolute;inset:20px;border-radius:50%;overflow:hidden;
+    background:radial-gradient(circle at 38% 30%,var(--dial2) 0%,var(--dial) 58%,#05070b 100%);
+    box-shadow:inset 0 0 40px rgba(0,0,0,.85),inset 0 2px 6px rgba(255,255,255,.05);
+  }
+  svg{position:absolute;inset:0;width:100%;height:100%}
+  .brand{font:600 13px/1 Georgia,serif;letter-spacing:4px;fill:var(--ink)}
+  .brand-sub{font:400 7.5px/1 Georgia,serif;letter-spacing:2.5px;fill:var(--gold)}
+  /* ===== 按钮与表冠 ===== */
+  .crown{position:absolute;right:-13px;top:50%;transform:translateY(-50%);width:22px;height:34px;
+    background:linear-gradient(90deg,#3c4048,#5a5f68 40%,#26282d);border-radius:5px;
+    box-shadow:2px 2px 6px rgba(0,0,0,.7);z-index:2}
+  .crown::after{content:"";position:absolute;inset:4px 6px;background:repeating-linear-gradient(0deg,#111 0 2px,#55595f 2px 4px);border-radius:2px}
+  .btn{position:absolute;width:16px;height:30px;background:linear-gradient(90deg,#33363c,#53575f 45%,#1e2024);
+    border:none;border-radius:4px;cursor:pointer;z-index:2;box-shadow:2px 2px 5px rgba(0,0,0,.7)}
+  .btn::after{content:"";position:absolute;inset:3px 4px;background:repeating-linear-gradient(0deg,#101114 0 2px,#4a4e56 2px 4px);border-radius:2px}
+  .btn:active{transform:translateX(2px)}
+  #btnA{right:-9px;top:16%;} #btnB{right:-9px;top:66%;}
+  /* ===== 物理说明条 ===== */
+  .legend{color:#8f96a3;font-size:12px;letter-spacing:1px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+  .legend b{color:var(--gold);font-weight:600}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+  <div class="watch" role="img" aria-label="机械天文腕表：主表盘显示本地时间，含月相、计时码表、日期与日出日落子表盘">
+    <div class="bezel"></div>
+    <div class="crown" aria-hidden="true"></div>
+    <button class="btn" id="btnA" aria-label="码表按钮A：开始/暂停/继续"></button>
+    <button class="btn" id="btnB" aria-label="码表按钮B：计圈，长按归零"></button>
+    <div class="dial" id="dial"></div>
+  </div>
+  <div class="legend">
+    <span>表冠旁 <b>A</b>＝开始/暂停/继续　<b>B</b>＝计圈（运行中长按1.2s归零）</span>
+    <span>点击 <b>日出日落小盘</b> 切换城市</span>
+  </div>
+<script>
+"use strict";
+/* ================= 工具 ================= */
+const NS="http://www.w3.org/2000/svg";
+const $=(t,a,parent)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(parent)parent.appendChild(e);return e;};
+const reduced=matchMedia("(prefers-reduced-motion: reduce)");
+const TWO=Math.PI*2;
+const pad=n=>String(n).padStart(2,"0");
+
+/* ================= 表盘尺寸 ================= */
+const dial=document.getElementById("dial");
+const R=250,C=R; // viewBox 500x500, 中心250
+const svg=$("svg",{viewBox:`0 0 ${R*2} ${R*2}`,"aria-hidden":"true",role:"presentation"},dial);
+const g=$("g",{transform:`translate(${C},${C})`},svg);
+const P=(a,r)=>[Math.sin(a)*r,-Math.cos(a)*r];
+
+/* ================= 静态盘面 ================= */
+/* 时标 */
+for(let i=0;i<60;i++){
+  const a=i/60*TWO, major=i%5===0;
+  const [x1,y1]=P(a,major?178:186),[x2,y2]=P(a,194);
+  $("line",{x1,y1,x2,y2,stroke:major?"var(--gold)":"#5a5f68","stroke-width":major?4:1.4},g);
+}
+for(let i=1;i<=12;i++){
+  const a=i/12*TWO,[x,y]=P(a,158);
+  const t=$("text",{x,y:y+7,"text-anchor":"middle",fill:"var(--ink)","font-size":24,"font-family":"Georgia,serif","font-weight":"600"},g);
+  t.textContent=i;
+}
+/* 轨道刻度环(码表秒刻度 240~60) */
+for(let i=0;i<60;i++){
+  const a=i/60*TWO,[x1,y1]=P(a,196),[x2,y2]=P(a,i%5?200:204);
+  $("line",{x1,y1,x2,y2,stroke:i%5?"#3a3f49":"var(--steel)","stroke-width":i%5?1:2},g);
+}
+/* 品牌区 */
+let t=$("text",{x:0,y:-96,"text-anchor":"middle",class:"brand"},g);t.textContent="ASTRO-CHRONO";
+t=$("text",{x:0,y:-78,"text-anchor":"middle",class:"brand-sub"},g);t.textContent="GENÈVE · AUTOMATIC · MOONPHASE";
+/* 分钟/小时圈文字 */
+t=$("text",{x:0,y:150,"text-anchor":"middle",fill:"#7a8290","font-size":11,"letter-spacing":3},g);
+t.textContent="SWISS  CALCULATED  SUNRISE";
+
+/* ================= 昼夜弧（主盘 240° 区） ================= */
+const dayArc=$("path",{fill:"none",stroke:"url(#dayGrad)","stroke-width":7,"stroke-linecap":"round",transform:"translate(0,-2)"},g);
+const nightArc=$("path",{fill:"none",stroke:"#1c2742","stroke-width":7,"stroke-linecap":"round",transform:"translate(0,-2)"},g);
+const defs=$("defs",{},svg);
+const grad=$("linearGradient",{id:"dayGrad",x1:"0",y1:"0",x2:"1",y2:"1"},defs);
+$("stop",{offset:"0","stop-color":"#e8b34a"},grad);$("stop",{offset:"1","stop-color":"#b3542e"},grad);
+const arcPath=(r,a0,a1)=>{
+  const [x0,y0]=P(a0,r),[x1,y1]=P(a1,r);
+  return `M${x0},${y0} A${r},${r} 0 ${a1-a0>Math.PI?1:0} 1 ${x1},${y1}`;
+};
+
+/* ================= 子表盘工厂 ================= */
+function subdial(cx,cy,r,opts){
+  const s=$("g",{},g);
+  const sg=$("linearGradient",{id:"subGrad"+(opts.id),x1:"0",y1:"0",x2:"0",y2:"1"},defs);
+  $("stop",{offset:"0","stop-color":"#1d222b"},sg);$("stop",{offset:"1","stop-color":"#0c0f14"},sg);
+  $("circle",{cx,cy,r,fill:`url(#subGrad${opts.id})`,stroke:"#454a54","stroke-width":1},s);
+  const n=opts.tick||12;
+  for(let i=0;i<n;i++){
+    const a=i/n*TWO,[x1,y1]=[cx+Math.sin(a)*r*.82,cy-Math.cos(a)*r*.82],[x2,y2]=[cx+Math.sin(a)*r*.92,cy-Math.cos(a)*r*.92];
+    $("line",{x1,y1,x2,y2,stroke:i%3===0?"var(--gold)":"#565c66","stroke-width":i%3===0?1.8:1},s);
+  }
+  if(opts.label){const tl=$("text",{x:cx,y:cy+r*.55,"text-anchor":"middle",fill:"#8a92a0","font-size":9,"letter-spacing":1.5},s);tl.textContent=opts.label;}
+  return s;
+}
+/* 子表盘位置 */
+const SP={chrono:{x:-108,y:60,r:62},moon:{x:0,y:112,r:52},date:{x:108,y:60,r:40},sun:{x:108,y:-78,r:44}};
+subdial(SP.chrono.x,SP.chrono.y,SP.chrono.r,{id:1,tick:12,label:"CHRONO 30 MIN"});
+subdial(SP.date.x,SP.date.y,SP.date.r,{id:2,tick:31,label:"DATE"});
+subdial(SP.sun.x,SP.sun.y,SP.sun.r,{id:3,tick:12,label:"SUNRISE / SET"});
+/* 月相窗（下半，带拱形开口） */
+const mg=$("g",{},g);
+$("path",{d:`M${-SP.moon.r-14},${SP.moon.y+10} A${SP.moon.r+16},${SP.moon.r+16} 0 0 0 ${SP.moon.r+14},${SP.moon.y+10} L0,${SP.moon.y-30} Z`,fill:"#05070c",stroke:"#3a3f49","stroke-width":1.5},mg);
+
+/* ================= 指针 ================= */
+function hand(len,w,color,tail=18,op=1){
+  const h=$("g",{opacity:op},g);
+  $("line",{x1:0,y1:tail,x2:0,y2:-len,stroke:color,"stroke-width":w,"stroke-linecap":"round"},h);
+  return h;
+}
+const hourHand=$("g",{},g);
+$("path",{d:"M-5,16 L-2.4,-96 L0,-106 L2.4,-96 L5,16 Z",fill:"var(--ink)",stroke:"#1a1c22","stroke-width":.8},hourHand);
+$("circle",{cx:0,cy:-70,r:3.2,fill:"none",stroke:"var(--gold)","stroke-width":1.4},hourHand);
+const minHand=$("g",{},g);
+$("path",{d:"M-4,18 L-1.8,-140 L0,-152 L1.8,-140 L4,18 Z",fill:"var(--steel)",stroke:"#1a1c22","stroke-width":.7},minHand);
+$("circle",{cx:0,cy:-100,r:2.6,fill:"none",stroke:"var(--gold)","stroke-width":1.2},minHand);
+const secHand=$("g",{},g);
+$("line",{x1:0,y1:34,x2:0,y2:-196,stroke:"var(--red)","stroke-width":1.8,"stroke-linecap":"round"},secHand);
+$("circle",{cx:0,cy:0,r:6.5,fill:"var(--red)",stroke:"#5e1d12","stroke-width":1},secHand);
+$("circle",{cx:0,cy:0,r:2,fill:"#e8e4d8"},secHand);
+/* 码表子盘指针 + 中央计圈指针 */
+const chronoHand=$("line",{x1:SP.chrono.x,y1:SP.chrono.y+10,x2:SP.chrono.x,y2:SP.chrono.y-SP.chrono.r*.88,stroke:"var(--gold)","stroke-width":2.2,"stroke-linecap":"round"},g);
+const lapHand=$("line",{x1:0,y1:14,x2:0,y2:-170,stroke:"#7fd4ff","stroke-width":1.4,"stroke-linecap":"round",opacity:0},g);
+const dateHand=$("line",{x1:SP.date.x,y1:SP.date.y+8,x2:SP.date.x,y2:SP.date.y-SP.date.r*.8,stroke:"var(--gold)","stroke-width":2},g);
+const sunriseHand=$("line",{x1:SP.sun.x,y1:SP.sun.y+8,x2:SP.sun.x,y2:SP.sun.y-SP.sun.r*.82,stroke:"#e8b34a","stroke-width":2},g);
+const sunsetHand=$("line",{x1:SP.sun.x,y1:SP.sun.y+8,x2:SP.sun.x,y2:SP.sun.y-SP.sun.r*.82,stroke:"#5a86c8","stroke-width":2},g);
+/* 中心轴 */
+$("circle",{cx:0,cy:0,r:9,fill:"#1a1c22",stroke:"var(--gold)","stroke-width":1.5},g);
+$("circle",{cx:0,cy:0,r:3.5,fill:"var(--gold)"},g);
+
+/* ================= 月相 ================= */
+const moonSky=$("circle",{cx:0,cy:SP.moon.y,r:34,fill:"#0b1020",stroke:"#1c2742","stroke-width":1},mg);
+const moonLit=$("circle",{cx:0,cy:SP.moon.y,r:30,fill:"#e8e4cf"},mg);
+const moonShad=$("circle",{cx:0,cy:SP.moon.y,r:30,fill:"#0b1020"},mg);
+const moonStar=[$("circle",{cx:-14,cy:SP.moon.y-8,r:1.1,fill:"#8a92a0"},mg),$("circle",{cx:10,cy:SP.moon.y+12,r:1,fill:"#8a92a0"},mg),$("circle",{cx:16,cy:SP.moon.y-14,r:1.3,fill:"#8a92a0"},mg)];
+/* 新月→满月→新月，29.530588 天周期；以 2000-01-06 18:14 UTC 新月为历元 */
+function moonAge(d){
+  const synodic=29.530588853;
+  const epoch=Date.UTC(2000,0,6,18,14);
+  let age=((d.getTime()-epoch)/86400000)%synodic;
+  if(age<0)age+=synodic;
+  return age;
+}
+function drawMoon(age){
+  const ph=age/29.530588853;          // 0=新月
+  const ill=(1-Math.cos(ph*TWO))/2;   // 照明比例 0~1
+  /* 双圆法：暗圆与亮圆同半径，暗圆中心水平偏移切割出月相 */
+  const off=(ph<.5? -1:1)*(60*ill-30); // ill=0→±30 全暗；ill=1→∓30 全亮
+  moonShad.setAttribute("cx",off);
+  moonShad.setAttribute("r",30);
+  for(const s of moonStar)s.setAttribute("opacity",ill<.5?1:.25);
+}
+</script>
+<script>
+"use strict";
+/* ================= 日期窗数字（印在月相盘上方） ================= */
+const dateText=$("text",{x:0,y:SP.moon.y-40,"text-anchor":"middle",fill:"var(--gold)","font-size":15,"font-family":"Georgia,serif","font-weight":"700","letter-spacing":2},g);
+/* ================= 城市与日出日落 ================= */
+const CITIES=[
+  {name:"北京",lat:39.904,lon:116.407,tz:8},
+  {name:"伦敦",lat:51.507,lon:-0.128,tz:0},
+  {name:"纽约",lat:40.713,lon:-74.006,tz:-5},
+  {name:"东京",lat:35.690,lon:139.692,tz:9},
+];
+let cityIdx=0;
+const cityText=$("text",{x:0,y:-140,"text-anchor":"middle",fill:"var(--steel)","font-size":13,"letter-spacing":3,"font-family":"Georgia,serif"},g);
+const sunInfo=$("text",{x:0,y:170,"text-anchor":"middle",fill:"#8a92a0","font-size":10,"letter-spacing":1},g);
+/* 太阳位置算法（NOAA 简化）：返回当地太阳时角日出日落（小时） */
+function sunTimes(date,lat,lon,tz){
+  const rad=Math.PI/180;
+  // 当地时区下当天正午附近的儒略日
+  const d=new Date(date.getFullYear(),date.getMonth(),date.getDate(),12-tz);
+  const n=(d.getTime()/86400000+2440587.5)-2451545.0; // 自 J2000 天数
+  const L=(280.460+0.9856474*n)%360;                  // 平黄经
+  const gA=(357.528+0.9856003*n)%360;                 // 平近点角
+  const lambda=(L+1.915*Math.sin(gA*rad)+0.020*Math.sin(2*gA*rad))*rad; // 黄经
+  const eps=(23.439-0.0000004*n)*rad;
+  const dec=Math.asin(Math.sin(eps)*Math.sin(lambda)); // 赤纬
+  const latR=lat*rad;
+  const cosH=(Math.sin(-0.833*rad)-Math.sin(latR)*Math.sin(dec))/(Math.cos(latR)*Math.cos(dec));
+  if(cosH>1)return{rise:null,set:null,polar:"夜"};   // 极夜
+  if(cosH<-1)return{rise:null,set:null,polar:"昼"};  // 极昼
+  const H=Math.acos(cosH)/rad/15;                    // 半日长(小时)
+  // 太阳时正午 = 12 - lon/15 - eqTime/60 + tz（粗略，含时区回算）
+  const eqT=0.071*Math.sin(2*lambda)-0.028*Math.cos(lambda); // 均时差近似(弧度→小时)
+  const noon=12-lon/15-eqT;
+  return{rise:noon-H,set:noon+H,polar:null};
+}
+const fmtH=h=>{if(h==null)return"--:--";h=((h%24)+24)%24;return`${pad(Math.floor(h))}:${pad(Math.round(h%1*60))}`;};
+/* 昼夜弧绘制：以日出日落换算到 24h 表盘角度（主盘 12h 制×2） */
+function drawDayArc(st){
+  if(st.polar){dayArc.setAttribute("d","");nightArc.setAttribute("d","");return;}
+  const ang=h=>((h%24)/24)*TWO-Math.PI/2; // 0h 在左? 用 24h 映射：正午在底
+  const r=210;
+  // 日面 = rise→set 顺时针
+  const aR=ang(st.rise),aS=ang(st.set);
+  dayArc.setAttribute("d",arcPath(r,aR,aS));
+  nightArc.setAttribute("d",arcPath(r,aS,aR));
+}
+
+/* ================= 计时码表状态机 ================= */
+const chrono={running:false,start:0,acc:0,laps:[]};
+let btnBTimer=null,btnBLong=false;
+const btnA=document.getElementById("btnA"),btnB=document.getElementById("btnB");
+function chronoStart(){if(chrono.running)return;chrono.running=true;chrono.start=performance.now()-chrono.acc;updateAria();}
+function chronoStop(){if(!chrono.running)return;chrono.acc=performance.now()-chrono.start;chrono.running=false;updateAria();}
+function chronoReset(){chrono.running=false;chrono.acc=0;chrono.laps=[];lapHand.setAttribute("opacity",0);updateAria();}
+function chronoLap(){if(chrono.running){chrono.laps.push(chronoNow());lapHand.setAttribute("opacity",1);}}
+const chronoNow=()=>chrono.running?performance.now()-chrono.start:chrono.acc;
+btnA.addEventListener("click",()=>{btnBLong=false;chrono.running?(chronoStop()):(chrono.acc>0?chronoStart():chronoStart());});
+btnB.addEventListener("click",()=>{
+  if(btnBLong)return;
+  if(chrono.running)chronoLap();
+});
+btnB.addEventListener("pointerdown",()=>{
+  if(!chrono.running)return;
+  btnBTimer=setTimeout(()=>{btnBLong=true;chronoReset();},1200);
+});
+for(const ev of["pointerup","pointerleave"])btnB.addEventListener(ev,()=>clearTimeout(btnBTimer));
+function updateAria(){
+  const watch=document.querySelector(".watch");
+  const m=Math.floor(chrono.acc/60000),s=Math.floor(chrono.acc/1000)%60,cs=Math.floor(chrono.acc/10)%100;
+  watch.setAttribute("aria-label",`机械天文腕表。本地时间。码表${chrono.running?"计时中":chrono.acc>0?"已暂停":"停止"} ${pad(m)}分${pad(s)}秒${pad(cs)}，计圈${chrono.laps.length}次。`);
+}
+updateAria();
+
+/* ================= 昼夜子表盘：sunrise/set 指针映射 24h 到两圈 ================= */
+function subAngle(val){ // 24h → 子盘一圈
+  return ((val%24)/24)*TWO;
+}
+function setHand(h,el,r,cx,cy){
+  const a=subAngle(h);
+  el.setAttribute("transform",`rotate(${a*180/Math.PI} ${cx} ${cy})`);
+}
+
+/* ================= 主循环：绝对时间驱动，无漂移 ================= */
+let lastMinute=-1;
+function frame(now){
+  const d=new Date();
+  const ms=d.getMilliseconds();
+  const sec=d.getSeconds()+(reduced.matches?0:ms/1000); // reduced-motion: 跳秒
+  const min=d.getMinutes()+sec/60;
+  const hr=(d.getHours()%12)+min/60;
+  secHand.setAttribute("transform",`rotate(${sec/60*360})`);
+  minHand.setAttribute("transform",`rotate(${min/60*360})`);
+  hourHand.setAttribute("transform",`rotate(${hr/12*360})`);
+  /* 码表指针：30s 一圈（无惯性假设，纯算术） */
+  const cs=chronoNow();
+  const cSec=(cs%30000)/30000;
+  chronoHand.setAttribute("transform",`rotate(${cSec*360} ${SP.chrono.x} ${SP.chrono.y})`);
+  /* 计圈指针：指向最近一圈时刻 */
+  if(chrono.laps.length){
+    const lap=chrono.laps[chrono.laps.length-1];
+    const lAng=((lap%60000)/60000)*360;
+    lapHand.setAttribute("transform",`rotate(${lAng})`);
+  }
+  /* 分钟变化时更新：月相/日期/日出日落 */
+  const minuteKey=d.getFullYear()*1e7+(d.getMonth()+1)*1e5+d.getDate()*1e3+d.getHours()*60+d.getMinutes();
+  if(minuteKey!==lastMinute){
+    lastMinute=minuteKey;
+    const age=moonAge(d);
+    drawMoon(age);
+    const day=d.getDate(),y=d.getFullYear(),mo=d.getMonth();
+    const dim=new Date(y,mo+1,0).getDate(); // 大小月自动
+    dateText.textContent=`${y}-${pad(mo+1)}-${pad(day)}`;
+    /* 日期指针按 31 刻度走 */
+    dateHand.setAttribute("transform",`rotate(${(day-1)/31*360} ${SP.date.x} ${SP.date.y})`);
+    const c=CITIES[cityIdx];
+    cityText.textContent=`◈ ${c.name} ◈`;
+    const st=sunTimes(d,c.lat,c.lon,c.tz);
+    sunriseHand.setAttribute("transform",`rotate(${subAngle(st.rise??0)*180/Math.PI} ${SP.sun.x} ${SP.sun.y})`);
+    sunsetHand.setAttribute("transform",`rotate(${subAngle(st.set??0)*180/Math.PI} ${SP.sun.x} ${SP.sun.y})`);
+    drawDayArc(st);
+    sunInfo.textContent=st.polar?`${c.name} · 极${st.polar}`:`${c.name} ↑${fmtH(st.rise)} ↓${fmtH(st.set)}（当地时 UTC${c.tz>=0?"+":""}${c.tz}）`;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ================= 城市切换：点击 SUN 子盘区域 ================= */
+const hitSun=$("circle",{cx:SP.sun.x,cy:SP.sun.y,r:SP.sun.r+6,fill:"transparent",cursor:"pointer"},g);
+hitSun.addEventListener("click",()=>{cityIdx=(cityIdx+1)%CITIES.length;lastMinute=-1;});
+hitSun.setAttribute("role","button");
+hitSun.setAttribute("aria-label","切换日出日落城市");
+hitSun.setAttribute("tabindex","0");
+hitSun.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();cityIdx=(cityIdx+1)%CITIES.length;lastMinute=-1;}});
+
+/* ================= 标签页回焦立即校准 ================= */
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastMinute=-1;updateAria();}});
+/* reduced-motion 变化即时生效 */
+reduced.addEventListener?.("change",()=>{lastMinute=-1;});
+</script>
+</body>
+</html>

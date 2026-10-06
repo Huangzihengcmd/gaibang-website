@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>赛博清明上河图 · Neon Bianhe Scroll</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #05000c; }
+  body { font-family: "Microsoft YaHei", sans-serif; cursor: crosshair; }
+
+  #viewport { position: fixed; inset: 0; overflow: hidden; }
+  #sky {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, #0b0020 0%, #1a0533 30%, #2d0a4e 55%, #4a1060 75%, #12002a 100%);
+  }
+  #stars { position: absolute; inset: 0; }
+  .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle 3s infinite ease-in-out; }
+  @keyframes twinkle { 0%,100% { opacity: .15; } 50% { opacity: .9; } }
+
+  #moon {
+    position: absolute; top: 6%; left: 30%;
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffe9ff, #b96bff 60%, #7a2bd0);
+    box-shadow: 0 0 60px 20px rgba(185,107,255,.5), 0 0 140px 60px rgba(120,40,220,.3);
+    animation: moonGlow 6s ease-in-out infinite;
+  }
+  @keyframes moonGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+
+  /* 远景霓虹山峦（SVG多层视差） */
+  .mountain-layer { position: absolute; bottom: 340px; left: 0; width: 300%; }
+  #m1 { bottom: 330px; opacity: .5; animation: scrollX 240s linear infinite; }
+  #m2 { bottom: 360px; opacity: .7; animation: scrollX 150s linear infinite; }
+
+  #city {
+    position: absolute; bottom: 0; left: 0; height: 100%;
+    display: flex; align-items: flex-end;
+    animation: scrollX 90s linear infinite;
+  }
+  @keyframes scrollX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  #viewport:hover #city, #viewport:hover .par { animation-play-state: paused; }
+  .par { position: absolute; bottom: 0; left: 0; display: flex; align-items: flex-end; animation: scrollX 90s linear infinite; }
+
+  /* 街道 */
+  #street {
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 120px;
+    background: linear-gradient(180deg, #0a0118 0%, #14042b 40%, #1c0538 100%);
+    border-top: 2px solid #ff2ec4;
+    box-shadow: 0 -4px 30px rgba(255,46,196,.35);
+  }
+  #street::after {
+    content: ""; position: absolute; top: 58px; left: 0; width: 200%; height: 4px;
+    background: repeating-linear-gradient(90deg, #00f0ff 0 60px, transparent 60px 130px);
+    opacity: .7; filter: drop-shadow(0 0 8px #00f0ff);
+    animation: dashFlow 2.4s linear infinite;
+  }
+  @keyframes dashFlow { from { transform: translateX(0); } to { transform: translateX(-130px); } }
+
+  /* 店铺 */
+  .shop { position: relative; margin-right: -6px; cursor: pointer; }
+  .shop:hover { filter: brightness(1.25) drop-shadow(0 0 12px rgba(0,240,255,.5)); }
+
+  .neon {
+    font-family: "Microsoft YaHei";
+    fill: none; stroke-width: 1.4;
+    animation: neonFlicker 3s infinite;
+  }
+  @keyframes neonFlicker {
+    0%,100% { opacity: 1; }
+    92% { opacity: 1; } 93% { opacity: .3; } 94% { opacity: 1; }
+    96% { opacity: .4; } 97% { opacity: 1; }
+  }
+  .neon.delay1 { animation-delay: .7s; } .neon.delay2 { animation-delay: 1.4s; } .neon.delay3 { animation-delay: 2.1s; }
+
+  .holo { animation: holoFloat 4s ease-in-out infinite, holoBlink 2s steps(2) infinite; }
+  @keyframes holoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  @keyframes holoBlink { 0%,100% { opacity: .9; } 50% { opacity: .55; } }
+
+  .scanbeam { animation: beamSweep 5s linear infinite; }
+  @keyframes beamSweep { from { transform: translateX(-260px); } to { transform: translateX(260px); } }
+
+  /* 飞行车 */
+  .flycar { position: absolute; pointer-events: none; animation-timing-function: linear; animation-iteration-count: infinite; }
+  @keyframes fly1 { from { transform: translate(-220px, 0); } to { transform: translate(102vw, -60px); } }
+  @keyframes fly2 { from { transform: translate(102vw, 40px); } to { transform: translate(-220px, -30px); } }
+  @keyframes fly3 { from { transform: translate(-260px, -120px); } to { transform: translate(102vw, -160px); } }
+
+  /* 信息卡片 */
+  #card {
+    position: fixed; z-index: 99; display: none; pointer-events: none;
+    min-width: 240px; max-width: 300px;
+    background: rgba(6,2,20,.92);
+    border: 1px solid #00f0ff;
+    box-shadow: 0 0 18px rgba(0,240,255,.6), inset 0 0 24px rgba(0,240,255,.12);
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    padding: 12px 14px; color: #d8faff;
+  }
+  #card h3 { color: #ff2ec4; font-size: 15px; text-shadow: 0 0 8px #ff2ec4; margin-bottom: 6px; letter-spacing: 1px; }
+  #card .row { font-size: 12px; line-height: 1.8; }
+  #card .row b { color: #00f0ff; font-weight: normal; }
+  #card .bar { height: 6px; background: #14043a; margin-top: 8px; border: 1px solid #00f0ff55; }
+  #card .bar > i { display: block; height: 100%; background: linear-gradient(90deg,#00f0ff,#ff2ec4); box-shadow: 0 0 8px #00f0ff; }
+  #card::before {
+    content: "◤ SYSTEM LINK ◢"; display: block; font-size: 9px; color: #00f0ff88;
+    letter-spacing: 3px; margin-bottom: 6px;
+  }
+
+  #hud {
+    position: fixed; top: 14px; left: 18px; z-index: 50; color: #00f0ff;
+    font-size: 12px; letter-spacing: 2px; text-shadow: 0 0 10px #00f0ff;
+    border-left: 2px solid #ff2ec4; padding-left: 10px; line-height: 1.9;
+    text-transform: uppercase; opacity: .9;
+  }
+  #hud .dim { color: #ff2ec4; text-shadow: 0 0 8px #ff2ec4; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="sky">
+    <div id="stars"></div>
+    <div id="moon"></div>
+    <svg class="mountain-layer" id="m2" height="300" viewBox="0 0 2400 300" preserveAspectRatio="none">
+      <path d="M0,300 L0,180 L150,90 L300,190 L430,70 L560,180 L720,110 L880,220 L1040,130 L1200,210 L1360,90 L1520,190 L1680,120 L1840,220 L2000,140 L2160,210 L2300,150 L2400,200 L2400,300 Z"
+        fill="#1b0640" stroke="#7a2bd0" stroke-width="2"/>
+    </svg>
+    <svg class="mountain-layer" id="m1" height="220" viewBox="0 0 2400 220" preserveAspectRatio="none">
+      <path d="M0,220 L0,140 L200,60 L380,150 L520,80 L700,160 L860,90 L1040,170 L1220,70 L1400,150 L1580,100 L1760,180 L1940,110 L2120,170 L2280,120 L2400,160 L2400,220 Z"
+        fill="#2a0a52" stroke="#ff2ec4" stroke-width="1.5" opacity=".8"/>
+    </svg>
+    <div id="city"></div>
+    <div id="street"></div>
+  </div>
+</div>
+<div id="hud">
+  <div>◤ 大宋 · 汴京特别行政区 ◢</div>
+  <div class="dim">NEON BIANHE // 虹桥 Sector-07</div>
+  <div>POP <span id="pop">0</span> · NET <span id="net">98.6%</span></div>
+</div>
+<div id="card"></div>
+<script>
+/* ===== 数据 ===== */
+const SHOPS = [
+  { n:"老王义体维修店", d:"汴河大街107号", r:98, tag:"义体改造 · 24h营业", c:"#00f0ff" },
+  { n:"虹桥烤冷面·分子料理", d:"虹桥东堍3号", r:96, tag:"纳米级辣椒面", c:"#ff2ec4" },
+  { n:"孙羊正店·电玩城", d:"御街南口", r:92, tag:"沉浸式斗茶模拟器", c:"#ffe14d" },
+  { n:"赵太丞数据医馆", d:"大相国寺西侧", r:99, tag:"脑机接口诊断", c:"#00f0ff" },
+  { n:"十千脚店·胶囊旅馆", d:"汴河北岸", r:88, tag:"义体充电桩配套", c:"#8affc1" },
+  { n:"刘家上色沉檀拣香", d:"香料电子市场", r:94, tag:"数字熏香 芯片味", c:"#ff9e2c" },
+  { n:"王员外无线织坊", d:"城西纺织区", r:90, tag:"光纤云锦定制", c:"#ff2ec4" },
+  { n:"解库·区块链当铺", d:"州桥夜市", r:85, tag:"NFT典当 利息3%", c:"#ffe14d" },
+  { n:"毕昇活字打印·3D工坊", d:"书院巷", r:97, tag:"全息雕版速印", c:"#00f0ff" },
+  { n:"汴河码头无人机快递", d:"东水门码头", r:93, tag:"半日达 全城覆盖", c:"#8affc1" },
+  { n:"香饮子·合成抹茶铺", d:"夜市中段", r:91, tag:"代糖雪泡缩皮饮", c:"#ff9e2c" },
+  { n:"瓦子·全息勾栏剧院", d:"桑家瓦子", r:95, tag:"《目连救母XR》热映", c:"#ff2ec4" },
+];
+
+/* ===== 星空 ===== */
+const stars = document.getElementById("stars");
+for (let i = 0; i < 90; i++) {
+  const s = document.createElement("div");
+  s.className = "star";
+  const sz = Math.random() * 2 + 1;
+  s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*55}%;width:${sz}px;height:${sz}px;animation-delay:${Math.random()*3}s`;
+  stars.appendChild(s);
+}
+
+/* ===== 店铺 SVG 生成（两份拼接实现无缝循环） ===== */
+function shopSVG(i, shop) {
+  const neonCls = ["", "delay1", "delay2", "delay3"][i % 4];
+  const h = 240 + (i % 3) * 50;              // 建筑高度
+  const w = 260;                              // 店铺宽度
+  const c1 = shop.c, c2 = i % 2 ? "#ff2ec4" : "#00f0ff";
+  return `<svg class="shop" data-i="${i}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs>
+    <linearGradient id="b${i}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#180536"/><stop offset="1" stop-color="#090119"/>
+    </linearGradient>
+    <linearGradient id="w${i}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${c2}" stop-opacity=".35"/><stop offset="1" stop-color="${c2}" stop-opacity=".05"/>
+    </linearGradient>
+  </defs>
+  <!-- 主体楼 -->
+  <rect x="10" y="60" width="${w-20}" height="${h-60}" fill="url(#b${i})" stroke="${c1}" stroke-width="1.5" opacity=".97"/>
+  <!-- 飞檐屋顶 -->
+  <path d="M0,66 Q${w/2},18 ${w},66 L${w-26},60 Q${w/2},30 ${26},60 Z" fill="#0d0221" stroke="${c2}" stroke-width="2"/>
+  <path d="M6,66 Q${w/2},24 ${w-6},66" fill="none" stroke="${c1}" stroke-width="1" opacity=".6"/>
+  <!-- 屋脊霓虹 -->
+  <line class="neon ${neonCls}" x1="30" y1="52" x2="${w-30}" y2="52" stroke="${c2}" stroke-width="3"/>
+  <!-- 霓虹招牌 -->
+  <text class="neon ${neonCls}" x="${w/2}" y="108" text-anchor="middle" font-size="26" stroke="${c1}" style="filter:drop-shadow(0 0 6px ${c1})">${shop.n.slice(0,6)}</text>
+  <text class="neon ${neonCls}" x="${w/2}" y="132" text-anchor="middle" font-size="11" stroke="${c2}" letter-spacing="4" opacity=".85">◆ CYBER-STORE ◆</text>
+  <!-- 二层窗 -->
+  ${[0,1,2].map(k=>`<rect class="win" x="${44+k*62}" y="148" width="40" height="30" fill="url(#w${i})" stroke="${c2}" stroke-width="1"><animate attributeName="opacity" values="1;.4;1" dur="${2+k*0.7}s" repeatCount="indefinite"/></rect>`).join("")}
+  <!-- 一层门窗 -->
+  <rect x="${w/2-30}" y="${h-92}" width="60" height="92" fill="#05000f" stroke="${c1}" stroke-width="1.5"/>
+  <rect x="${w/2-22}" y="${h-80}" width="44" height="80" fill="url(#w${i})"><animate attributeName="opacity" values="1;.5;1" dur="1.8s" repeatCount="indefinite"/></rect>
+  <rect x="26" y="${h-80}" width="42" height="34" fill="#0a0225" stroke="${c2}" stroke-width="1"/>
+  <rect x="${w-68}" y="${h-80}" width="42" height="34" fill="#0a0225" stroke="${c2}" stroke-width="1"/>
+  <!-- 门口全息投影广告 -->
+  <g class="holo" style="transform-origin:${w/2}px ${h-120}px">
+    <path d="M${w/2-16},${h-150} L${w/2+16},${h-150} L${w/2+10},${h-108} L${w/2-10},${h-108} Z" fill="${c1}" opacity=".28" stroke="${c1}"/>
+    <circle cx="${w/2}" cy="${h-158}" r="8" fill="none" stroke="${c1}"><animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite"/></circle>
+    <line x1="${w/2}" y1="${h-100}" x2="${w/2}" y2="${h-70}" stroke="${c1}" stroke-dasharray="3 4" opacity=".7"/>
+  </g>
+  <!-- 扫描光束 -->
+  <rect class="scanbeam" x="${w/2-2}" y="60" width="4" height="${h-60}" fill="${c2}" opacity=".18"/>
+  <!-- 门牌 -->
+  <text x="${w/2}" y="${h-12}" text-anchor="middle" font-size="9" fill="${c2}" opacity=".8" letter-spacing="2">${shop.d}</text>
+</svg>`;
+}
+
+const city = document.getElementById("city");
+const rowHTML = SHOPS.map((s, i) => shopSVG(i, s)).join("");
+city.innerHTML = `<div class="par">${rowHTML}</div><div class="par">${rowHTML}</div>`;
+city.style.display = "flex";
+
+/* ===== 飞行车（每辆含车灯、尾焰、探照锥） ===== */
+function flycarSVG(color) {
+  return `<svg width="90" height="40" viewBox="0 0 90 40">
+    <ellipse cx="45" cy="30" rx="26" ry="4" fill="${color}" opacity=".25"/>
+    <path d="M18,26 Q18,14 34,14 L58,14 Q72,14 74,24 L74,28 Q74,32 66,32 L26,32 Q18,32 18,26 Z" fill="#0d0225" stroke="${color}" stroke-width="1.5"/>
+    <path d="M32,16 L52,16 L48,24 L34,24 Z" fill="${color}" opacity=".5"/>
+    <circle cx="24" cy="24" r="2.6" fill="#fff"><animate attributeName="opacity" values="1;.2;1" dur=".5s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="26" r="2.2" fill="#ff3355"><animate attributeName="opacity" values=".3;1;.3" dur=".7s" repeatCount="indefinite"/></circle>
+    <path d="M18,26 L-14,20 L-14,32 Z" fill="${color}" opacity=".18"/>
+    <path d="M18,26 L-30,26 L-14,21 L-14,31 Z" fill="${color}" opacity=".1"/>
+  </svg>`;
+}
+const CAR_COLORS = ["#00f0ff", "#ff2ec4", "#ffe14d", "#8affc1"];
+for (let i = 0; i < 8; i++) {
+  const c = document.createElement("div");
+  c.className = "flycar";
+  c.innerHTML = flycarSVG(CAR_COLORS[i % 4]);
+  const up = i % 2 === 0;
+  c.style.top = (12 + Math.random() * 35) + "%";
+  c.style.animation = `${up ? "fly1" : "fly2"} ${16 + Math.random() * 14}s linear ${-Math.random() * 20}s infinite`;
+  if (i % 3 === 0) c.style.animationName = "fly3";
+  document.getElementById("viewport").appendChild(c);
+}
+
+/* ===== 街上行人：普通人 / 机械义肢行人（走路摆臂 + 义体发光） ===== */
+function personSVG(cyber, color) {
+  const legAnim = `<animateTransform attributeName="transform" type="rotate" additive="sum" values="18;${-18};18" dur=".9s" repeatCount="indefinite"/>`;
+  const armAnim = `<animateTransform attributeName="transform" type="rotate" additive="sum" values="-22;22;-22" dur=".9s" repeatCount="indefinite"/>`;
+  return `<svg width="46" height="86" viewBox="0 0 46 86">
+    <g stroke="${cyber ? color : "#c8b8ff"}" stroke-width="2.4" fill="none" stroke-linecap="round">
+      <!-- 头 -->
+      <circle cx="23" cy="12" r="7" fill="${cyber ? "#0a0225" : "#1a0a35"}" stroke="${cyber ? color : "#9a7fd0"}"/>
+      ${cyber ? `<rect x="17" y="8" width="12" height="3" fill="${color}" opacity=".9"><animate attributeName="opacity" values="1;.3;1" dur="1.2s" repeatCount="indefinite"/></rect>` : ""}
+      <!-- 躯干 -->
+      <line x1="23" y1="19" x2="23" y2="48"/>
+      ${cyber ? `<line x1="23" y1="26" x2="23" y2="44" stroke="${color}" stroke-width="1"><animate attributeName="stroke-dashoffset" values="0;-12" dur=".6s" repeatCount="indefinite"/></line>` : ""}
+      <!-- 手臂（摆动） -->
+      <g transform="translate(23,24)"><line x1="0" y1="0" x2="0" y2="22" transform="rotate(0)"/>${armAnim.replace("%s","")}</g>
+      <g transform="translate(23,24) rotate(0)"><line x1="0" y1="0" x2="0" y2="22"/></g>
+      <!-- 腿（摆动） -->
+      <g transform="translate(23,48)"><line x1="0" y1="0" x2="0" y2="30"/>${legAnim}</g>
+      <g transform="translate(23,48)"><line x1="0" y1="0" x2="0" y2="30" transform="rotate(0)"><animateTransform attributeName="transform" type="rotate" values="-18;18;-18" dur=".9s" repeatCount="indefinite"/></line></g>
+    </g>
+    ${cyber ? `<circle cx="23" cy="78" r="2" fill="${color}"><animate attributeName="opacity" values="1;.2;1" dur=".8s" repeatCount="indefinite"/></circle>` : ""}
+  </svg>`;
+}
+const PED_COLORS = ["#00f0ff", "#ff2ec4", "#8affc1", "#ffe14d"];
+const street = document.getElementById("street");
+for (let i = 0; i < 14; i++) {
+  const p = document.createElement("div");
+  const cyber = i % 2 === 1;                    // 一半是机械义肢行人
+  p.innerHTML = personSVG(cyber, PED_COLORS[i % 4]);
+  p.style.cssText = `position:absolute;bottom:${cyber ? 8 : 40}px;left:${(i * 7.3 + Math.random() * 4) % 100}%;transform:scale(${0.7 + Math.random() * 0.5});opacity:.95;z-index:2;`;
+  // 行人横向移动（与长卷反向，营造相对运动）
+  const dir = cyber ? "walkR" : "walkL";
+  if (!document.getElementById("walkKF")) {
+    const st = document.createElement("style");
+    st.id = "walkKF";
+    st.textContent = `@keyframes walkL { from{margin-left:8vw} to{margin-left:-8vw} } @keyframes walkR { from{margin-left:-8vw} to{margin-left:8vw} }`;
+    document.head.appendChild(st);
+  }
+  p.style.animation = `${dir} ${9 + Math.random() * 8}s ease-in-out ${-Math.random() * 10}s infinite alternate`;
+  street.appendChild(p);
+}
+
+/* ===== 悬停信息卡片 ===== */
+const card = document.getElementById("card");
+let cardTimer = null;
+document.getElementById("viewport").addEventListener("mousemove", (e) => {
+  const shop = e.target.closest(".shop");
+  if (!shop) { card.style.display = "none"; return; }
+  const s = SHOPS[+shop.dataset.i];
+  card.innerHTML = `<h3>${s.n}</h3>
+    <div class="row"><b>地址</b>｜${s.d}</div>
+    <div class="row"><b>业务</b>｜${s.tag}</div>
+    <div class="row"><b>好评率</b>｜${s.r}%　<b style="color:${s.r>=95?'#8affc1':'#ffe14d'}">${s.r>=95?"▉▉▉ 极佳":"▉▉░ 良好"}</b></div>
+    <div class="bar"><i style="width:${s.r}%"></i></div>`;
+  card.style.display = "block";
+  const x = Math.min(e.clientX + 18, innerWidth - 320);
+  const y = Math.min(e.clientY + 18, innerHeight - 170);
+  card.style.left = x + "px";
+  card.style.top = y + "px";
+});
+document.getElementById("viewport").addEventListener("mouseleave", () => card.style.display = "none");
+
+/* ===== HUD 动态数字 ===== */
+let pop = 8127433;
+setInterval(() => {
+  pop += Math.floor(Math.random() * 90) - 40;
+  document.getElementById("pop").textContent = pop.toLocaleString();
+  document.getElementById("net").textContent = (97 + Math.random() * 2.9).toFixed(1) + "%";
+}, 1200);
+document.getElementById("pop").textContent = pop.toLocaleString();
+</script>
+</body>
+</html>

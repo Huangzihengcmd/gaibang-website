@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>GPT-6 Astra — Particle Interaction Demo</title>
+<style>
+  :root{
+    --bg:#050505;
+    --ink:#f4f4f2;
+    --muted:rgba(244,244,242,.56);
+    --line:rgba(255,255,255,.11);
+    --accent:#fff4dd;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:auto;background:var(--bg)}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:20;
+    opacity:.035;
+    background-image:radial-gradient(rgba(255,255,255,.8) .45px, transparent .55px);
+    background-size:3px 3px;
+    mix-blend-mode:screen;
+  }
+  .scroll-space{height:340vh;position:relative}
+  .stage{
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow:hidden;
+    isolation:isolate;
+    background:
+      radial-gradient(circle at 50% 49%, rgba(255,245,220,.04), transparent 26%),
+      radial-gradient(circle at 50% 52%, rgba(255,255,255,.018), transparent 46%),
+      #050505;
+  }
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #dust{z-index:1;opacity:.88}
+  #particles{z-index:2}
+  .vignette{position:absolute;inset:0;z-index:3;pointer-events:none;background:radial-gradient(circle at 50% 46%,transparent 34%,rgba(0,0,0,.28) 66%,rgba(0,0,0,.76) 100%)}
+  .topbar{
+    position:absolute;z-index:5;left:28px;right:28px;top:24px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  }
+  .brand{font-weight:600;letter-spacing:.02em;text-transform:none;font-size:14px}
+  .tag{color:var(--muted)}
+  .center-copy{
+    position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(720px, 92vw);text-align:center;pointer-events:none;
+    mix-blend-mode:screen;
+  }
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;transition:opacity .2s,transform .2s}
+  h1{
+    margin:0;
+    font-size:clamp(62px,10vw,150px);
+    line-height:.84;
+    letter-spacing:-.075em;
+    font-weight:500;
+    text-shadow:0 0 35px rgba(255,244,220,.10);
+    transition:opacity .18s,transform .18s;
+  }
+  .sub{margin-top:20px;color:var(--muted);font-size:13px;letter-spacing:.04em;transition:opacity .2s,transform .2s}
+  .side{position:absolute;z-index:5;bottom:24px;left:28px;right:28px;display:flex;align-items:flex-end;justify-content:space-between;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .scrollhint{display:flex;align-items:center;gap:9px}
+  .scrollhint i{display:block;width:30px;height:1px;background:rgba(255,255,255,.35);position:relative;overflow:hidden}
+  .scrollhint i::after{content:"";position:absolute;left:-40%;top:0;width:40%;height:100%;background:#fff;animation:sweep 1.8s ease-in-out infinite}
+  @keyframes sweep{0%{transform:translateX(0)}55%,100%{transform:translateX(350%)}}
+  .readout{display:flex;gap:18px;align-items:center}
+  .readout strong{color:rgba(255,255,255,.85);font-weight:500}
+  .cursor-orb{position:fixed;z-index:10;width:18px;height:18px;border:1px solid rgba(255,255,255,.32);border-radius:999px;pointer-events:none;transform:translate(-50%,-50%);opacity:0;mix-blend-mode:difference;transition:opacity .2s}
+  .cursor-orb::before{content:"";position:absolute;inset:-18px;border-radius:inherit;background:radial-gradient(circle,rgba(255,255,255,.12),transparent 66%)}
+  .hint-card{position:absolute;z-index:6;right:28px;top:50%;transform:translateY(-50%);width:220px;padding:14px 16px;border:1px solid var(--line);background:rgba(12,12,12,.45);backdrop-filter:blur(10px);font-size:11px;line-height:1.6;color:var(--muted);opacity:.7}
+  .hint-card b{color:rgba(255,255,255,.85);font-weight:500;display:block;margin-bottom:4px}
+  .replay{position:absolute;z-index:7;bottom:22px;left:50%;transform:translateX(-50%);padding:7px 12px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:rgba(255,255,255,.66);font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-radius:999px;opacity:.75;backdrop-filter:blur(10px)}
+  .replay:hover{color:#fff;border-color:rgba(255,255,255,.24)}
+  @media (max-width:900px){
+    .topbar,.side{left:16px;right:16px}
+    .hint-card{display:none}
+    h1{font-size:22vw}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .scrollhint i::after{animation:none}
+  }
+</style>
+</head>
+<body>
+  <div class="scroll-space" id="scrollSpace">
+    <section class="stage" id="stage">
+      <canvas id="dust"></canvas>
+      <canvas id="particles"></canvas>
+      <div class="vignette"></div>
+
+      <div class="topbar">
+        <div class="brand">GPT&nbsp;&nbsp;/&nbsp;&nbsp;Astra</div>
+        <div class="tag">Particle study · offline demo</div>
+      </div>
+
+      <div class="center-copy" id="copy">
+        <div class="eyebrow" id="eyebrow">A new generation of intelligence</div>
+        <h1 id="heroTitle">Astra</h1>
+        <div class="sub" id="sub">Scroll to gather the field · move the pointer through the particles</div>
+      </div>
+
+      <div class="hint-card">
+        <b>INTERACTION</b>
+        Wheel / trackpad controls the morph. Pointer movement bends nearby particles. Hold the pointer still and the field slowly settles.
+      </div>
+
+      <div class="side">
+        <div class="scrollhint"><i></i><span>Scroll to morph</span></div>
+        <div class="readout"><span>FORM <strong id="formReadout">STARFIELD</strong></span><span>01 / 01</span></div>
+      </div>
+
+      <button class="replay" id="replay" type="button">Replay</button>
+      <div class="cursor-orb" id="cursorOrb"></div>
+    </section>
+  </div>
+
+<script>
+(() => {
+  const pCanvas = document.getElementById('particles');
+  const dCanvas = document.getElementById('dust');
+  const pctx = pCanvas.getContext('2d', { alpha:true });
+  const dctx = dCanvas.getContext('2d', { alpha:true });
+  const stage = document.getElementById('stage');
+  const copy = document.getElementById('copy');
+  const eyebrow = document.getElementById('eyebrow');
+  const heroTitle = document.getElementById('heroTitle');
+  const sub = document.getElementById('sub');
+  const formReadout = document.getElementById('formReadout');
+  const cursorOrb = document.getElementById('cursorOrb');
+  const replay = document.getElementById('replay');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const TAU = Math.PI * 2;
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const lerp = (a,b,t) => a + (b-a)*t;
+  const smoothstep = (a,b,x) => { const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+  const easeInOut = x => x*x*(3-2*x);
+  const fract = x => x - Math.floor(x);
+  const hash = n => fract(Math.sin(n*127.1 + 311.7) * 43758.5453123);
+
+  let W=0,H=0,DPR=1;
+  let shapePoints=[];
+  let particles=[];
+  let dust=[];
+  let raf=0;
+  const snapshotMode = new URLSearchParams(location.search).has('snapshot');
+  let last=performance.now();
+  let scrollProgress=0;
+  let progressTarget=0;
+  let mouse={x:0,y:0,tx:0,ty:0,active:false,speed:0};
+  let mouseVX=0, mouseVY=0;
+  let burst=0;
+  let t=0;
+
+  // Deterministic pseudo-random generator for stable local renders.
+  let seed=83191;
+  const rnd=()=>{ seed|=0; seed = seed + 0x6D2B79F5 | 0; let r=Math.imul(seed ^ seed>>>15,1|seed); r ^= r + Math.imul(r ^ r>>>7,61|r); return ((r ^ r>>>14)>>>0)/4294967296; };
+
+  function sizeCanvas(canvas, ctx){
+    const r=stage.getBoundingClientRect();
+    W=Math.max(320,r.width); H=Math.max(320,r.height);
+    DPR=Math.min(2.2, devicePixelRatio||1);
+    canvas.width=Math.floor(W*DPR); canvas.height=Math.floor(H*DPR);
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+
+  function makeShapeMask(){
+    const w=Math.floor(Math.min(900, Math.max(560, W*0.82)));
+    const h=Math.floor(Math.min(900, Math.max(520, H*0.83)));
+    const c=document.createElement('canvas');
+    c.width=w;c.height=h;
+    const x=c.getContext('2d');
+    x.clearRect(0,0,w,h);
+    x.fillStyle='#fff';
+    x.textAlign='center';x.textBaseline='middle';
+    let font=Math.floor(h*0.84)+'px Arial Black, Arial, sans-serif';
+    try{x.font=font}catch{}
+    x.fillText('6',w/2,h/2+Math.floor(h*.02));
+    const data=x.getImageData(0,0,w,h).data;
+    const pts=[];
+    const stride=Math.max(2, Math.floor(Math.sqrt((w*h)/(Math.max(9000,particles.length||18000)) )));
+    for(let y=0;y<h;y+=stride){
+      for(let xx=0;xx<w;xx+=stride){
+        const i=(y*w+xx)*4+3;
+        if(data[i]>90){
+          const edgeChance=hash(xx*0.19+y*0.83);
+          if(edgeChance > 0.08){
+            const jx=(hash(xx*2.3+y*7.1)-.5)*stride*1.5;
+            const jy=(hash(xx*5.8+y*3.7)-.5)*stride*1.5;
+            pts.push({x:W/2 + (xx-w/2)*.79 + jx, y:H/2 + (y-h/2)*.79 + jy});
+          }
+        }
+      }
+    }
+    // Ensure a generous contour ring so the symbol stays crisp at lower counts.
+    const contours=5200;
+    for(let k=0;k<contours;k++){
+      const a=(k/contours)*TAU;
+      // crude 6 silhouette contour approximation from a parametric loop
+      const rx=W*.205 + W*.028*Math.sin(3*a+0.5);
+      const ry=H*.365 + H*.03*Math.sin(2*a);
+      let px=W/2 + Math.cos(a)*rx;
+      let py=H/2 + Math.sin(a)*ry;
+      if(hash(k*8.11)<.62) pts.push({x:px,y:py});
+    }
+    return pts;
+  }
+
+  function makeStarTarget(i){
+    const a=rnd()*TAU;
+    const z=Math.pow(rnd(),.55);
+    const r=lerp(Math.min(W,H)*.05, Math.min(W,H)*.50, z);
+    const elliptical=H/W<1.0 ? .66 : .8;
+    return {
+      x:W/2 + Math.cos(a)*r + (rnd()-.5)*W*.07,
+      y:H/2 + Math.sin(a)*r*elliptical + (rnd()-.5)*H*.08,
+      s:.55+rnd()*1.45,
+      phase:rnd()*TAU,
+      depth:rnd()
+    };
+  }
+
+  function rebuild(){
+    seed=83191;
+    shapePoints=makeShapeMask();
+    const count=Math.max(12000, Math.min(24000, Math.floor((W*H)/95)));
+    particles=new Array(count);
+    for(let i=0;i<count;i++){
+      const s=shapePoints[i % shapePoints.length] || {x:W/2,y:H/2};
+      const star=makeStarTarget(i);
+      const orbitA=rnd()*TAU, orbitR=Math.min(W,H)*(.08+.42*rnd());
+      particles[i]={
+        x:star.x,y:star.y,vx:0,vy:0,
+        sx:star.x, sy:star.y,
+        hx:s.x,hy:s.y,
+        ox:W/2+Math.cos(orbitA)*orbitR, oy:H/2+Math.sin(orbitA)*orbitR*(H/W<1?.62:.78),
+        base:.45+rnd()*1.4,
+        tw:rnd()*TAU,
+        q:rnd(),
+        seed:rnd(),
+        drift:.3+rnd()*1.2
+      };
+    }
+    dust=new Array(Math.max(550,Math.floor(W*H/2200)));
+    for(let i=0;i<dust.length;i++){
+      const a=rnd()*TAU, r=Math.pow(rnd(),.55)*Math.min(W,H)*.65;
+      dust[i]={
+        x:W/2+Math.cos(a)*r*(.86+.3*rnd()),
+        y:H/2+Math.sin(a)*r*(H/W<1?.62:.78),
+        r:.35+rnd()*1.2,
+        a:.04+rnd()*.2,
+        p:rnd()*TAU
+      };
+    }
+  }
+
+  function resize(){
+    sizeCanvas(pCanvas,pctx); sizeCanvas(dCanvas,dctx); rebuild();
+  }
+
+  function phaseWeight(p){
+    // scatter -> gathered 6 -> scatter
+    const gather=smoothstep(.10,.43,p);
+    const release=1-smoothstep(.57,.90,p);
+    return clamp(Math.min(gather,release),0,1);
+  }
+
+  function morphPosition(pt,i,gather){
+    const wobble=Math.sin(t*.65+pt.tw+i*.007)*(.5+pt.q*1.8);
+    const hx=pt.hx + Math.cos(t*.45+pt.tw)*wobble;
+    const hy=pt.hy + Math.sin(t*.50+pt.tw)*wobble;
+    const starX=pt.sx + Math.cos(t*pt.drift+pt.tw)*(.8+pt.q*2.2);
+    const starY=pt.sy + Math.sin(t*pt.drift*.9+pt.tw)*(.8+pt.q*2.2);
+    const cx=lerp(starX,hx,gather);
+    const cy=lerp(starY,hy,gather);
+    return [cx,cy];
+  }
+
+  function updateScroll(){
+    const max=Math.max(1, document.documentElement.scrollHeight-innerHeight);
+    const y=scrollY/max;
+    progressTarget=clamp(y,0,1);
+  }
+
+  function pointerMove(e){
+    const rect=stage.getBoundingClientRect();
+    mouse.tx=e.clientX-rect.left; mouse.ty=e.clientY-rect.top;
+    mouse.active=true;
+    cursorOrb.style.left=e.clientX+'px'; cursorOrb.style.top=e.clientY+'px'; cursorOrb.style.opacity='1';
+  }
+  addEventListener('pointermove',pointerMove,{passive:true});
+  addEventListener('pointerleave',()=>{mouse.active=false;cursorOrb.style.opacity='0'});
+  addEventListener('wheel',()=>updateScroll(),{passive:true});
+  addEventListener('scroll',updateScroll,{passive:true});
+  addEventListener('pointerdown',(e)=>{
+    const r=stage.getBoundingClientRect();
+    const x=e.clientX-r.left,y=e.clientY-r.top;
+    for(let i=0;i<particles.length;i+=3){
+      const pt=particles[i],dx=pt.x-x,dy=pt.y-y,d2=dx*dx+dy*dy;
+      if(d2<140000){ const d=Math.sqrt(d2)+.001; const k=(1-d/380)*8; pt.vx += dx/d*k; pt.vy += dy/d*k; }
+    }
+    burst=Math.min(1,burst+.7);
+  });
+
+  replay.addEventListener('click',()=>{
+    scrollTo({top:0,behavior:'smooth'});
+    burst=1;
+    for(const pt of particles){pt.vx+=(rnd()-.5)*8;pt.vy+=(rnd()-.5)*8;}
+  });
+
+  function drawDust(){
+    dctx.clearRect(0,0,W,H);
+    const glow=0.35+0.18*Math.sin(t*.32);
+    for(let i=0;i<dust.length;i++){
+      const s=dust[i];
+      const x=s.x + Math.cos(t*.04+s.p)*1.4;
+      const y=s.y + Math.sin(t*.05+s.p)*1.0;
+      const alpha=s.a*(.6+.4*Math.sin(t*.8+s.p));
+      dctx.fillStyle=`rgba(255,246,229,${Math.max(0,alpha*glow)})`;
+      dctx.fillRect(x,y,s.r,s.r);
+    }
+  }
+
+  function render(now){
+    const dt=Math.min(.033,(now-last)/1000||.016); last=now;
+    t += dt*60;
+    if(!reduceMotion) scrollProgress += (progressTarget-scrollProgress)*(1-Math.pow(.0008,dt));
+    else scrollProgress=progressTarget;
+    const gather=phaseWeight(scrollProgress);
+    mouse.x += (mouse.tx-mouse.x)*.11;
+    mouse.y += (mouse.ty-mouse.y)*.11;
+    mouseVX=mouse.tx-mouse.x; mouseVY=mouse.ty-mouse.y;
+    if(Math.hypot(mouseVX,mouseVY)<.02){mouseVX*=.9;mouseVY*=.9}
+    burst*=Math.pow(.08,dt);
+
+    drawDust();
+    pctx.clearRect(0,0,W,H);
+    pctx.globalCompositeOperation='source-over';
+    // faint accumulation gives the same photographic afterglow feeling without external effects.
+    pctx.fillStyle='rgba(5,5,5,.06)';
+    pctx.fillRect(0,0,W,H);
+    pctx.globalCompositeOperation='lighter';
+
+    const mx=mouse.x,my=mouse.y;
+    const interactionRadius=Math.min(W,H)*.27;
+    for(let i=0;i<particles.length;i++){
+      const pt=particles[i];
+      const [tx,ty]=morphPosition(pt,i,gather);
+      let ax=(tx-pt.x)*(.032 + gather*.03);
+      let ay=(ty-pt.y)*(.032 + gather*.03);
+
+      const dx=mx-pt.x,dy=my-pt.y,d2=dx*dx+dy*dy;
+      if(mouse.active && d2<interactionRadius*interactionRadius){
+        const d=Math.sqrt(d2)+.0001;
+        const fall=1-d/interactionRadius;
+        const wobble=Math.sin(t*.06+pt.tw)*.6;
+        // Pointer becomes a soft attractor in the gathered phase, and a soft repeller in the star field.
+        const pull = (gather*.85 - (1-gather)*.35) * fall;
+        ax += (dx/d)*pull*2.4 + (-dy/d)*wobble*fall*.35;
+        ay += (dy/d)*pull*2.4 + (dx/d)*wobble*fall*.35;
+      }
+
+      if(burst>.01){
+        const cx=W/2,cy=H/2,dx=pt.x-cx,dy=pt.y-cy,d=Math.sqrt(dx*dx+dy*dy)+.1;
+        const b=burst*(.8+pt.q*.8);
+        ax += dx/d*b*.55;
+        ay += dy/d*b*.55;
+      }
+
+      // subtle orbital drift prevents the gathered form from looking like a frozen bitmap.
+      ax += Math.sin(t*.009 + pt.seed*TAU)*.008;
+      ay += Math.cos(t*.011 + pt.seed*TAU)*.008;
+
+      pt.vx += ax;
+      pt.vy += ay;
+      const damp=.82 + gather*.09;
+      pt.vx*=damp; pt.vy*=damp;
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+
+      // Bound escaped particles back into the field.
+      if(pt.x < -80){pt.x=W+40;pt.vx*=.2}
+      else if(pt.x>W+80){pt.x=-40;pt.vx*=.2}
+      if(pt.y < -80){pt.y=H+40;pt.vy*=.2}
+      else if(pt.y > H+80){pt.y=-40;pt.vy*=.2}
+
+      const tw=.65+.35*Math.sin(t*.038+pt.tw);
+      const size=pt.base*(gather*.95 + (1-gather)*(.55+pt.q*.55));
+      const alpha=(.24 + pt.q*.58)*tw;
+      // tiny star core
+      pctx.fillStyle=`rgba(255,248,235,${alpha})`;
+      pctx.fillRect(pt.x,pt.y,size,size);
+      // occasional micro glow
+      if((i%17===0 || pt.q>.965) && size>0.8){
+        const glowR=size*2.6;
+        const g=pctx.createRadialGradient(pt.x,pt.y,0,pt.x,pt.y,glowR);
+        g.addColorStop(0,`rgba(255,245,220,${alpha*.28})`);
+        g.addColorStop(1,'rgba(255,245,220,0)');
+        pctx.fillStyle=g;
+        pctx.beginPath();pctx.arc(pt.x,pt.y,glowR,0,TAU);pctx.fill();
+      }
+    }
+
+    // Cursor halo is drawn in the particle layer, which makes the interaction feel embedded in the field.
+    if(mouse.active){
+      const glow=pctx.createRadialGradient(mx,my,0,mx,my,Math.min(W,H)*.11);
+      glow.addColorStop(0,'rgba(255,246,226,.10)');
+      glow.addColorStop(.35,'rgba(255,246,226,.028)');
+      glow.addColorStop(1,'rgba(255,246,226,0)');
+      pctx.fillStyle=glow;pctx.beginPath();pctx.arc(mx,my,Math.min(W,H)*.11,0,TAU);pctx.fill();
+    }
+
+    // UI follows the scroll morph without hiding the artwork.
+    const gatherUI=gather;
+    const opacity=1-gatherUI*.72;
+    eyebrow.style.opacity=String(.48+opacity*.35);
+    heroTitle.style.opacity=String(.20+opacity*.75);
+    heroTitle.style.transform=`translateY(${(1-gatherUI)*4}px) scale(${.98+gatherUI*.045})`;
+    sub.style.opacity=String(.34+opacity*.45);
+    copy.style.transform=`translate(-50%,-50%) translateY(${Math.sin(t*.018)*2}px)`;
+    const label=gather>.56 ? 'FORMING 6' : gather>.22 ? 'GATHERING' : 'STARFIELD';
+    formReadout.textContent=label;
+
+    if (!snapshotMode || t < 80) raf=requestAnimationFrame(render);
+  }
+
+  // ResizeObserver gives reliable local-file resizing without needing a framework.
+  const ro=new ResizeObserver(resize); ro.observe(stage);
+  resize();
+  updateScroll();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
