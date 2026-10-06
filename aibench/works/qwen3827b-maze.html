@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>蓝鲸迷宫 · 深海回响</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#010409;font-family:"Microsoft YaHei","PingFang SC",sans-serif;user-select:none;-webkit-user-select:none}
+#cv{position:fixed;inset:0;display:block}
+#hud{position:fixed;top:16px;left:18px;z-index:5;color:#bfefff;text-shadow:0 0 12px rgba(0,180,255,.7);font-size:15px;line-height:1.8;pointer-events:none;letter-spacing:1px}
+#hud b{color:#fff;font-size:17px}
+#hud .dim{color:#6fb6d9;font-size:12px}
+#ctl{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:5;color:rgba(150,220,255,.4);font-size:12px;letter-spacing:3px;pointer-events:none;white-space:nowrap}
+#muteBtn{position:fixed;top:14px;right:166px;z-index:6;width:40px;height:40px;border-radius:50%;border:1px solid rgba(0,200,255,.4);background:rgba(5,16,32,.6);color:#bfefff;font-size:17px;cursor:pointer}
+#muteBtn:hover{background:rgba(10,40,70,.8)}
+@media (max-width:640px){
+  #muteBtn{right:126px}
+  #hud{font-size:13px;top:12px;left:12px}
+  #ctl{display:none}
+}
+#touch{display:none;position:fixed;bottom:0;left:0;right:0;z-index:6;pointer-events:none;padding:0 18px 28px;justify-content:space-between}
+body.touch #touch{display:flex}
+.tgrp{display:flex;gap:14px;pointer-events:auto}
+.tgrp button{width:62px;height:62px;border-radius:50%;border:1px solid rgba(0,200,255,.5);background:rgba(8,24,48,.55);color:#bfefff;font-size:22px;touch-action:none}
+.tgrp button:active{background:rgba(0,140,220,.55)}
+#overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(10,40,80,.55),rgba(1,4,9,.92) 70%);backdrop-filter:blur(3px)}
+.box{text-align:center;color:#cfeeff;padding:34px 44px;border:1px solid rgba(0,190,255,.35);border-radius:14px;background:rgba(4,12,26,.72);box-shadow:0 0 60px rgba(0,140,255,.25),inset 0 0 40px rgba(0,80,160,.15);max-width:92vw}
+.box .whale{font-size:62px;filter:drop-shadow(0 0 18px rgba(0,200,255,.9));animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.box h1{margin:10px 0 2px;font-size:42px;letter-spacing:14px;color:#eaffff;text-shadow:0 0 24px rgba(0,190,255,.95),0 0 60px rgba(0,120,255,.5)}
+.box .sub{font-size:12px;letter-spacing:6px;color:#5fc8ff;margin-bottom:18px;text-shadow:0 0 10px rgba(0,180,255,.8)}
+.box .desc{font-size:14px;line-height:2;color:#9fd4ef;margin:0 0 20px}
+.box .hl{color:#ffd166;text-shadow:0 0 12px rgba(255,209,102,.8)}
+.keys{display:grid;grid-template-columns:repeat(3,auto);gap:9px 26px;justify-content:center;font-size:13px;color:#8fc9e8;margin-bottom:26px}
+.keys b{color:#fff;background:rgba(0,120,200,.25);border:1px solid rgba(0,190,255,.4);border-radius:5px;padding:1px 8px;margin-right:6px;font-family:Consolas,monospace}
+#startBtn{font-size:19px;letter-spacing:8px;padding:13px 46px;color:#031018;background:linear-gradient(180deg,#7de8ff,#18a8e8);border:none;border-radius:30px;cursor:pointer;box-shadow:0 0 26px rgba(0,190,255,.75);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 18px rgba(0,190,255,.5)}50%{box-shadow:0 0 42px rgba(0,220,255,.95)}}
+#startBtn:hover{filter:brightness(1.15)}
+#winbox{position:fixed;inset:0;z-index:9;display:none;align-items:center;justify-content:center;pointer-events:none}
+#winbox.show{display:flex}
+.wbox{text-align:center;color:#eaffff;border:1px solid rgba(120,255,220,.5);background:rgba(3,14,22,.8);border-radius:12px;padding:26px 54px;box-shadow:0 0 50px rgba(0,255,200,.3)}
+.wbox h2{margin:0 0 10px;font-size:30px;letter-spacing:8px;text-shadow:0 0 22px rgba(0,255,210,.9)}
+.wbox .t{color:#9fd4ef;font-size:16px}
+.wbox .dim{color:#5f92b0;font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div>第 <b id="lvl">1</b> 层</div>
+  <div>用时 <b id="time">00:00</b></div>
+  <div>距光 <b id="dist">--</b> m</div>
+  <div class="dim" id="best">最佳 --</div>
+</div>
+<div id="ctl">W A S D 游动 · SHIFT 冲刺 · R 重开 · M 静音</div>
+<button id="muteBtn">🔊</button>
+<div id="touch">
+  <div class="tgrp"><button data-k="vleft">◀</button><button data-k="vright">▶</button></div>
+  <div class="tgrp"><button data-k="vdown">▼</button><button data-k="vup">▲</button></div>
+</div>
+<div id="winbox"><div class="wbox">
+  <h2>✦ 找到出口之光 ✦</h2>
+  <div class="t" id="winTime"></div>
+  <div class="dim">正在下潜至下一层……</div>
+</div></div>
+<div id="overlay"><div class="box">
+  <div class="whale">🐋</div>
+  <h1>蓝鲸迷宫</h1>
+  <div class="sub">ABYSSAL LABYRINTH · 深海回响</div>
+  <p class="desc">在无尽深海的霓虹迷宫中，驾驶你的发光蓝鲸，<br>穿过幽暗回廊与漂浮的水母，寻找那束上升的<span class="hl">出口之光</span>。</p>
+  <div class="keys">
+    <div><b>W / ↑</b>前进</div>
+    <div><b>S / ↓</b>后退</div>
+    <div><b>A D / ← →</b>转向</div>
+    <div><b>SHIFT</b>冲刺</div>
+    <div><b>R</b>重开本层</div>
+    <div><b>M</b>静音</div>
+  </div>
+  <button id="startBtn">潜 入 深 海</button>
+</div></div>
+<script>
+'use strict';
+
+/* ========== 音效（WebAudio，环境低鸣 + 提示音） ========== */
+let AC = null, masterGain = null, muted = false, ambNodes = null;
+function initAudio() {
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = AC.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(AC.destination);
+    // 深海低鸣
+    const o1 = AC.createOscillator(), g1 = AC.createGain();
+    o1.type = 'sine'; o1.frequency.value = 46; g1.gain.value = 0.05;
+    o1.connect(g1); g1.connect(masterGain); o1.start();
+    const o2 = AC.createOscillator(), g2 = AC.createGain();
+    o2.type = 'sine'; o2.frequency.value = 51.5; g2.gain.value = 0.04;
+    o2.connect(g2); g2.connect(masterGain); o2.start();
+    // 缓慢起伏
+    const lfo = AC.createOscillator(), lg = AC.createGain();
+    lfo.frequency.value = 0.07; lg.gain.value = 0.025;
+    lfo.connect(lg); lg.connect(g1.gain); lg.start();
+    ambNodes = { o1, o2, lfo };
+  } catch (e) { /* 音频不可用则静默 */ }
+}
+function blip(f0, f1, dur, type, vol) {
+  if (!AC || muted) return;
+  const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+  g.gain.setValueAtTime(vol || 0.18, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function sndBubble() { blip(300 + Math.random() * 500, 900 + Math.random() * 600, 0.15, 'sine', 0.05); }
+function sndBump() { blip(140, 60, 0.2, 'triangle', 0.2); }
+function sndWin() {
+  if (!AC || muted) return;
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+    const t = AC.currentTime + i * 0.12, o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.55);
+  });
+}
+function toggleMute() {
+  muted = !muted;
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.5;
+  document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+}
+document.getElementById('muteBtn').addEventListener('click', toggleMute);
+
+/* ========== 迷宫生成（递归回溯，3D 单元格） ========== */
+const CELL = 6;            // 每格 6 米
+const WALL_H = 5.2;        // 墙高
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function genMaze(nx, ny, nz, seed) {
+  const rng = mulberry32(seed);
+  const idx = (x, y, z) => x + nx * (y + ny * z);
+  const solid = new Uint8Array(nx * ny * nz).fill(1); // 1=实心墙
+  const stack = [], sx = 1, sy = 1, sz = 1;
+  const visit = (x, y, z) => {
+    solid[idx(x, y, z)] = 0;
+    const dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    for (let i = 0; i < 6; i++) {
+      const d = dirs[(rng() * 6) | 0];
+      const ax = x + d[0] * 2, ay = y + d[1] * 2, az = z + d[2] * 2;
+      if (ax > 0 && ax < nx - 1 && ay > 0 && ay < ny - 1 && az > 0 && az < nz - 1 && solid[idx(ax, ay, az)]) {
+        solid[idx(x + d[0], y + d[1], z + d[2])] = 0; // 打通中间
+        stack.push([x, y, z]);
+        visit(ax, ay, az);
+        stack.pop();
+      }
+    }
+  };
+  visit(sx, sy, sz);
+  // 打洞提升可玩性（减少死胡同回头路）
+  for (let i = 0; i < nx * ny * nz * 0.06; i++) {
+    const x = 1 + (rng() * (nx - 2)) | 0, y = 1 + (rng() * (ny - 2)) | 0, z = 1 + (rng() * (nz - 2)) | 0;
+    if (!solid[idx(x, y, z)]) continue;
+    const nb = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    if (solid[idx(x + nb[0][0], y, z)] === 0 || solid[idx(x, y + nb[0][1], z)] === 0 || solid[idx(x, y, z + nb[0][2])] === 0)
+      solid[idx(x, y, z)] = 0;
+  }
+  return solid;
+}
+// 从起点 BFS 找离起点最远的可走格作为出口
+function farthestCell(solid, nx, ny, nz) {
+  const idx = (x, y, z) => x + nx * (y + ny * z);
+  const start = idx(1, 1, 1), dist = new Int32Array(nx * ny * nz).fill(-1);
+  const q = [start]; dist[start] = 0;
+  let qi = 0, best = start, bd = 0;
+  while (qi < q.length) {
+    const c = q[qi++], d = dist[c];
+    if (d > bd) { bd = d; best = c; }
+    const z = (c / (nx * ny)) | 0, y = ((c / nx) | 0) % ny, x = c % nx;
+    const nb = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    for (const d2 of nb) {
+      const nx2 = x + d2[0], ny2 = y + d2[1], nz2 = z + d2[2];
+      if (nx2 < 0 || ny2 < 0 || nz2 < 0 || nx2 >= nx || ny2 >= ny || nz2 >= nz) continue;
+      const n = idx(nx2, ny2, nz2);
+      if (dist[n] < 0 && !solid[n]) { dist[n] = d + 1; q.push(n); }
+    }
+  }
+  return { x: best % nx, y: ((best / nx) | 0) % ny, z: (best / (nx * ny)) | 0 };
+}
+// 墙体 AABB 列表（供碰撞 + 渲染裁剪）
+function buildWallBoxes(solid, nx, ny, nz) {
+  const idx = (x, y, z) => x + nx * (y + ny * z);
+  const boxes = [];
+  const cx = (x) => (x - nx / 2 + 0.5) * CELL, cy = (y) => (y - ny / 2 + 0.5) * CELL, cz = (z) => (z - nz / 2 + 0.5) * CELL;
+  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+    if (!solid[idx(x, y, z)]) continue;
+    const s = CELL * 0.98;
+    boxes.push({ x: cx(x), y: cy(y), z: cz(z), hx: s / 2, hy: WALL_H, hz: s / 2 });
+  }
+  return boxes;
+}
+
+/* ========== 关卡与状态 ========== */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0;
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.6);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const LEVELS = [
+  { nx: 11, ny: 7, nz: 7 },
+  { nx: 13, ny: 9, nz: 7 },
+  { nx: 15, ny: 11, nz: 9 },
+  { nx: 17, ny: 13, nz: 11 },
+  { nx: 19, ny: 15, nz: 13 },
+];
+const game = {
+  level: 0, solid: null, boxes: null, exit: { x: 0, y: 0, z: 0 },
+  whale: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, vx: 0, vy: 0, vz: 0, boost: false },
+  startTime: 0, elapsed: 0, running: false, won: false, winTimer: 0,
+  jellies: [], bubbles: [], streaks: [], dust: [],
+  shake: 0, lastBubbleT: 0,
+};
+function cellCenter(cx, cy, cz) {
+  const L = LEVELS[game.level], ox = -L.nx / 2 + 0.5, oy = -L.ny / 2 + 0.5, oz = -L.nz / 2 + 0.5;
+  return { x: (cx + ox) * CELL, y: (cy + oy) * CELL, z: (cz + oz) * CELL };
+}
+function startLevel(idx, keepBest) {
+  game.level = idx;
+  const L = LEVELS[idx];
+  const seed = 1337 + idx * 991;
+  game.solid = genMaze(L.nx, L.ny, L.nz, seed);
+  game.boxes = buildWallBoxes(game.solid, L.nx, L.ny, L.nz);
+  game.exit = farthestCell(game.solid, L.nx, L.ny, L.nz);
+  const s = cellCenter(1, 1, 1);
+  game.whale = { x: s.x, y: s.y, z: s.z, yaw: 0, pitch: 0, vx: 0, vy: 0, vz: 0, boost: false };
+  game.elapsed = 0; game.running = true; game.won = false; game.winTimer = 0; game.shake = 0;
+  game.jellies = [];
+  const nj = 6 + idx * 3;
+  for (let i = 0; i < nj; i++) {
+    game.jellies.push({
+      x: (Math.random() - 0.5) * L.nx * CELL * 0.8,
+      y: (Math.random() - 0.5) * L.ny * CELL * 0.8,
+      z: (Math.random() - 0.5) * L.nz * CELL * 0.8,
+      r: 0.35 + Math.random() * 0.5, ph: Math.random() * 7, sp: 0.4 + Math.random() * 0.7,
+      hue: [180, 300, 45, 280][i % 4],
+    });
+  }
+  game.dust = [];
+  for (let i = 0; i < 160; i++) {
+    game.dust.push({ x: (Math.random() - 0.5) * 420, y: (Math.random() - 0.5) * 260, z: (Math.random() - 0.5) * 420, sp: 2 + Math.random() * 5 });
+  }
+  game.bubbles = [];
+  game.streaks = [];
+  document.getElementById('lvl').textContent = idx + 1;
+  if (!keepBest) {
+    // 记录最佳
+  }
+  let bestKey = 'whaleBest_' + idx;
+  const prev = localStorage.getItem(bestKey);
+  document.getElementById('best').textContent = prev ? '最佳 ' + fmtTime(+prev) : '最佳 --';
+}
+function fmtTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function onWin() {
+  game.won = true; game.winTimer = 0;
+  sndWin();
+  const key = 'whaleBest_' + game.level;
+  const prev = +localStorage.getItem(key) || 0;
+  if (!prev || game.elapsed < prev) localStorage.setItem(key, String(Math.round(game.elapsed)));
+  document.getElementById('winTime').textContent = '本层用时 ' + fmtTime(game.elapsed);
+  document.getElementById('winbox').classList.add('show');
+  setTimeout(() => document.getElementById('winbox').classList.remove('show'), 2200);
+  if (game.level < LEVELS - 0 && game.level + 1 < LEVELS.length) {
+    setTimeout(() => { if (game.won) startLevel(game.level + 1, true); }, 2300);
+  } else {
+    setTimeout(() => { if (game.won) { startLevel(0, true); } }, 2300);
+  }
+}

@@ -101,11 +101,13 @@ window.AIBENCH = {
       "works": {
         "billiards": "qwen3827b-billiards.html",
         "watch": "qwen3827b-watch.html",
+        "maze": "qwen3827b-maze.html",
         "qingming": "qwen3827b-qingming.html"
       },
       "dates": {
         "billiards": "2026-10-05",
         "watch": "2026-08-30",
+        "maze": "2026-10-06",
         "qingming": "2026-10-06"
       }
     },
