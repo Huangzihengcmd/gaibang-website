@@ -287,9 +287,277 @@ function onWin() {
   document.getElementById('winTime').textContent = '本层用时 ' + fmtTime(game.elapsed);
   document.getElementById('winbox').classList.add('show');
   setTimeout(() => document.getElementById('winbox').classList.remove('show'), 2200);
-  if (game.level < LEVELS - 0 && game.level + 1 < LEVELS.length) {
+  if (game.level + 1 < LEVELS.length) {
     setTimeout(() => { if (game.won) startLevel(game.level + 1, true); }, 2300);
   } else {
     setTimeout(() => { if (game.won) { startLevel(0, true); } }, 2300);
   }
 }
+
+/* ========== 视角与投影（简易 3D 相机） ========== */
+const cam = {
+  yaw: 0, pitch: 0, dist: 7.5, fov: 1.55, // fov 为半角正切
+  sx: 0, sy: 0, // 蓝鲸当前屏幕坐标（供 HUD 距离提示）
+};
+function rotY(p, a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
+}
+function rotX(p, a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
+}
+// 世界坐标 → 相机坐标（跟随蓝鲸）
+function toCam(p) {
+  let v = { x: p.x - game.whale.x, y: p.y - game.whale.y - 1.2, z: p.z - game.whale.z };
+  v = rotY(v, -cam.yaw);
+  v = rotX(v, -cam.pitch);
+  v.z += cam.dist;
+  return v;
+}
+function project(p) {
+  const v = toCam(p);
+  if (v.z <= 0.15) return null;
+  const f = H / 2 / Math.tan(cam.fov / 2);
+  return { x: W / 2 + (v.x / v.z) * f, y: H / 2 - (v.y / v.z) * f, z: v.z, scale: f / v.z };
+}
+
+/* ========== 蓝鲸（程序化多边形，侧面剪影 + 发光） ========== */
+// 身体剖面（x: 纵向 -1.6~1.6, y: 垂直 -0.55~0.55），沿 x 挤出成 3D 体
+const WHALE_SECT = [
+  [-1.62, 0.0, 0.0],
+  [-1.42, -0.10, 0.14],
+  [-1.10, -0.16, 0.24],
+  [-0.70, -0.20, 0.32],
+  [-0.25, -0.23, 0.40],
+  [0.15, -0.23, 0.42],
+  [0.55, -0.20, 0.38],
+  [0.90, -0.14, 0.28],
+  [1.20, -0.07, 0.16],
+  [1.45, 0.0, 0.0],
+];
+// 尾柄与尾鳍
+const TAIL = [[1.45, 0.0, 0.0], [1.72, 0.0, 0.0], [1.98, -0.42, 0.0], [2.05, 0.0, 0.0], [1.98, 0.42, 0.0]];
+function whaleBodyPoints(t) {
+  // 尾鳍摆动
+  const sw = Math.sin(t * 3.2) * 0.22;
+  const pts = [];
+  const w = game.whale;
+  for (const s of WHALE_SECT) {
+    const x = s[0] * (1 + Math.sin(t * 1.7) * 0.02);
+    const y = s[1];
+    pts.push({ x: w.x + Math.sin(w.yaw) * x, y: w.y + y, z: w.z - Math.cos(w.yaw) * x });
+  }
+  for (const s of TAIL) {
+    const bend = Math.pow(Math.max(0, s[0] - 1.45) / 0.6, 1.5) * sw;
+    const y = s[1] * (1 + Math.abs(bend) * 0.4);
+    pts.push({ x: w.x + Math.sin(w.yaw) * s[0] + Math.sin(w.yaw + Math.PI / 2) * bend * 0.6, y: w.y + y, z: w.z - Math.cos(w.yaw) * s[0] + Math.cos(w.yaw + Math.PI / 2) * bend * 0.6 });
+  }
+  return pts;
+}
+function drawWhale(t) {
+  const w = game.whale;
+  // 呼吸孔喷气（冲刺时更明显）
+  const p0 = { x: w.x - Math.sin(w.yaw) * 0.5, y: w.y + 0.42, z: w.z + Math.cos(w.yaw) * 0.5 };
+  const pp = project(p0);
+  if (pp) {
+    const a = (w.boost ? 0.5 : 0.22) * (0.6 + Math.sin(t * 5) * 0.4);
+    ctx.strokeStyle = `rgba(160,230,255,${Math.max(0, a)})`;
+    ctx.lineWidth = Math.max(1, pp.scale * 0.05);
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const off = (t * 2.2 + i * 0.33) % 1;
+      ctx.moveTo(pp.x, pp.y - pp.scale * (0.5 + off * 0.9));
+      ctx.quadraticCurveTo(pp.x + pp.scale * 0.18 * Math.sin(off * 7), pp.y - pp.scale * (0.5 + off * 0.7), pp.x + pp.scale * 0.06 * Math.sin(off * 11), pp.y - pp.scale * (0.55 + off * 0.95));
+    }
+    ctx.stroke();
+  }
+  // 身体主光晕
+  const hw = project({ x: w.x, y: w.y, z: w.z });
+  if (hw) {
+    const r = hw.scale * 1.9;
+    const g = ctx.createRadialGradient(hw.x, hw.y, 0, hw.x, hw.y, r);
+    g.addColorStop(0, 'rgba(80,190,255,0.34)');
+    g.addColorStop(0.5, 'rgba(40,120,220,0.12)');
+    g.addColorStop(1, 'rgba(20,60,140,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(hw.x, hw.y, r, 0, 7); ctx.fill();
+  }
+  // 侧面轮廓（沿身体剖面投影连线）
+  const pts = whaleBodyPoints(t);
+  const pr = pts.map(project);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // 背脊线
+  ctx.strokeStyle = 'rgba(150,225,255,0.85)';
+  ctx.lineWidth = Math.max(1.2, hw ? hw.scale * 0.06 : 1.2);
+  ctx.shadowColor = 'rgba(0,190,255,0.9)'; ctx.shadowBlur = 14;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i < 10; i++) {
+    if (!pr[i]) { started = false; continue; }
+    if (!started) { ctx.moveTo(pr[i].x, pr[i].y); started = true; }
+    else ctx.lineTo(pr[i].x, pr[i].y);
+  }
+  ctx.stroke();
+  // 腹线
+  ctx.beginPath(); started = false;
+  for (let i = 0; i < 10; i++) {
+    if (!pr[i]) { started = false; continue; }
+    if (!started) { ctx.moveTo(pr[i].x, pr[i].y + (pr[i].scale ? pr[i].scale * 0.5 : 0)); started = true; }
+    else ctx.lineTo(pr[i].x, pr[i].y + (pr[i].scale ? pr[i].scale * 0.5 : 0));
+  }
+  ctx.strokeStyle = 'rgba(90,170,240,0.4)';
+  ctx.lineWidth = Math.max(1, hw ? hw.scale * 0.04 : 1);
+  ctx.stroke();
+  // 尾鳍
+  ctx.beginPath();
+  for (let i = 10; i < pr.length; i++) {
+    if (!pr[i]) { started = false; continue; }
+    if (!started) { ctx.moveTo(pr[i].x, pr[i].y); started = true; }
+    else ctx.lineTo(pr[i].x, pr[i].y);
+  }
+  ctx.strokeStyle = 'rgba(170,235,255,0.9)';
+  ctx.lineWidth = Math.max(1.4, hw ? hw.scale * 0.07 : 1.4);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  // 生物发光斑点
+  for (let i = 1; i < 9; i += 2) {
+    if (!pr[i]) continue;
+    const a = 0.4 + Math.sin(t * 4 + i) * 0.3;
+    ctx.fillStyle = `rgba(120,240,255,${Math.max(0, a)})`;
+    ctx.beginPath();
+    ctx.arc(pr[i].x, pr[i].y + (pr[i].scale ? pr[i].scale * 0.18 : 0), Math.max(1, pr[i].scale * 0.045), 0, 7);
+    ctx.fill();
+  }
+}
+
+/* ========== 粒子：气泡 / 冲刺尾迹 / 出口光尘 ========== */
+function spawnBubble(x, y, z, big) {
+  if (game.bubbles.length > 120) return;
+  game.bubbles.push({ x, y, z, r: big ? 0.09 + Math.random() * 0.12 : 0.03 + Math.random() * 0.06, vy: 0.5 + Math.random() * 0.9, ph: Math.random() * 7, life: 0 });
+}
+function spawnStreak(x, y, z) {
+  if (game.streaks.length > 90) return;
+  game.streaks.push({ x, y, z, vx: (Math.random() - 0.5) * 1.4, vy: -0.4 - Math.random(), vz: (Math.random() - 0.5) * 1.4, life: 0, max: 0.7 + Math.random() * 0.5 });
+}
+function updateParticles(dt, t) {
+  const w = game.whale;
+  // 尾迹（移动越快越密）
+  const sp = Math.hypot(w.vx, w.vy, w.vz);
+  if (game.running && !game.won && sp > 0.5) {
+    const rate = sp > 9 ? 4 : 2;
+    for (let i = 0; i < rate; i++) {
+      if (Math.random() < 0.6) spawnStreak(w.x + Math.sin(w.yaw) * 1.8 + (Math.random() - 0.5) * 0.5, w.y + (Math.random() - 0.5) * 0.5, w.z - Math.cos(w.yaw) * 1.8 + (Math.random() - 0.5) * 0.5);
+    }
+  }
+  for (let i = game.streaks.length - 1; i >= 0; i--) {
+    const s = game.streaks[i];
+    s.life += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
+    if (s.life > s.max) game.streaks.splice(i, 1);
+  }
+  for (let i = game.bubbles.length - 1; i >= 0; i--) {
+    const b = game.bubbles[i];
+    b.life += dt; b.y += b.vy * dt; b.x += Math.sin(t * 3 + b.ph) * 0.25 * dt;
+    if (b.life > 3.2 || b.y > (LEVELS[game.level].ny * CELL) / 2) game.bubbles.splice(i, 1);
+  }
+  if (game.running && !game.won && t - game.lastBubbleT > (sp > 6 ? 0.05 : 0.22)) {
+    game.lastBubbleT = t;
+    spawnBubble(w.x + Math.sin(w.yaw) * -0.5 + (Math.random() - 0.5) * 0.4, w.y + 0.45, w.z - Math.cos(w.yaw) * -0.5 + (Math.random() - 0.5) * 0.4, sp > 7);
+    if (sp > 7 && Math.random() < 0.5) sndBubble();
+  }
+  // 水雾漂浮物（视差）
+  for (const d of game.dust) {
+    d.y -= d.sp * dt;
+    if (d.y < -130) d.y = 130;
+  }
+}
+function drawParticles() {
+  // 水雾
+  ctx.fillStyle = 'rgba(140,210,255,0.16)';
+  for (const d of game.dust) {
+    const p = project({ x: game.whale.x + d.x * 0.5, y: game.whale.y + d.y * 0.5, z: game.whale.z + d.z * 0.5 });
+    if (!p || p.z < 1 || p.z > 90) continue;
+    const r = Math.max(0.5, p.scale * 0.03);
+    ctx.globalAlpha = Math.min(0.5, 12 / p.z);
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // 尾迹
+  for (const s of game.streaks) {
+    const p = project(s);
+    if (!p) continue;
+    const a = (1 - s.life / s.max) * 0.8;
+    ctx.strokeStyle = `rgba(120,220,255,${a})`;
+    ctx.lineWidth = Math.max(0.6, p.scale * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - s.vx * p.scale * 0.18, p.y + s.vy * p.scale * 0.18);
+    ctx.stroke();
+  }
+  // 气泡
+  for (const b of game.bubbles) {
+    const p = project(b);
+    if (!p) continue;
+    const r = Math.max(0.8, p.scale * b.r);
+    ctx.strokeStyle = `rgba(170,235,255,${0.65 * (1 - b.life / 3.2)})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.stroke();
+    ctx.fillStyle = `rgba(200,245,255,${0.12 * (1 - b.life / 3.2)})`;
+    ctx.fill();
+  }
+}
+
+/* ========== 水母 ========== */
+function drawJelly(j, t) {
+  const p = project({ x: j.x, y: j.y + Math.sin(t * j.sp + j.ph) * 0.8, z: j.z });
+  if (!p || p.z < 0.8) return;
+  const r = Math.max(3, p.scale * j.r);
+  const pulse = 1 + Math.sin(t * 2.4 * j.sp + j.ph) * 0.16;
+  const hue = j.hue;
+  const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.6);
+  g.addColorStop(0, `hsla(${hue},95%,75%,0.5)`);
+  g.addColorStop(0.5, `hsla(${hue},90%,60%,0.14)`);
+  g.addColorStop(1, `hsla(${hue},90%,55%,0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.6, 0, 7); ctx.fill();
+  // 伞盖
+  ctx.fillStyle = `hsla(${hue},92%,72%,0.85)`;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, r * pulse, r * 0.72 * (2 - pulse), 0, Math.PI, 0);
+  ctx.fill();
+  // 触手
+  ctx.strokeStyle = `hsla(${hue},92%,80%,0.55)`;
+  ctx.lineWidth = Math.max(0.7, r * 0.06);
+  ctx.beginPath();
+  for (let k = -2; k <= 2; k++) {
+    ctx.moveTo(p.x + k * r * 0.3, p.y);
+    ctx.quadraticCurveTo(p.x + k * r * 0.3 + Math.sin(t * 3 + k + j.ph) * r * 0.4, p.y + r * 1.4, p.x + k * r * 0.22 + Math.sin(t * 2.2 + k * 2) * r * 0.5, p.y + r * 2.3);
+  }
+  ctx.stroke();
+}
+
+/* ========== 输入 ========== */
+const keys = {};
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()) || e.key === ' ') e.preventDefault();
+  if (k === 'm') toggleMute();
+  if (k === 'r' && game.running) startLevel(game.level, false);
+});
+window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+// 触屏方向盘
+if ('ontouchstart' in window) document.body.classList.add('touch');
+document.querySelectorAll('#touch button').forEach(b => {
+  const set = (v) => { keys[b.dataset.k] = v; };
+  b.addEventListener('touchstart', (e) => { e.preventDefault(); set(true); });
+  b.addEventListener('touchend', (e) => { e.preventDefault(); set(false); });
+  b.addEventListener('touchcancel', () => set(false));
+});
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio();
+  if (AC && AC.state === 'suspended') AC.resume();
+  document.getElementById('overlay').style.display = 'none';
+  startLevel(0, false);
+  game.startTime = performance.now();
+});
