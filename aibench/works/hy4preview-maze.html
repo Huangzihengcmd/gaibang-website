@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>3D 迷宫 · Maze 3D</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#05060a;
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; color:#e8ecf4; }
+  canvas { display:block; }
+  #map { position:fixed; right:18px; top:18px; width:170px; height:170px;
+    background:rgba(8,12,22,.62); border:1px solid rgba(120,180,255,.35);
+    border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.5); z-index:5; }
+  #hud { position:fixed; left:18px; top:18px; z-index:5; font-size:13px; line-height:1.9;
+    background:rgba(8,12,22,.55); border:1px solid rgba(120,180,255,.22);
+    padding:10px 14px; border-radius:10px; backdrop-filter:blur(6px); }
+  #hud b { color:#7fd7ff; font-weight:600; }
+  #hud .k { display:inline-block; min-width:18px; text-align:center; padding:1px 5px;
+    border:1px solid rgba(160,200,255,.4); border-radius:4px; color:#bcd8ff; font-size:12px; }
+  #tip { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:5;
+    font-size:12px; color:#8fa6c4; background:rgba(8,12,22,.5); padding:6px 14px;
+    border-radius:20px; border:1px solid rgba(120,180,255,.18); }
+  .panel { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:18px; text-align:center;
+    background:radial-gradient(circle at 50% 40%, rgba(20,32,58,.92), rgba(3,5,10,.97));
+    backdrop-filter:blur(4px); }
+  .panel h1 { font-size:34px; letter-spacing:6px; font-weight:600;
+    background:linear-gradient(90deg,#7fd7ff,#a6ffcf); -webkit-background-clip:text;
+    background-clip:text; color:transparent; }
+  .panel p { font-size:13px; color:#9fb2cc; line-height:2; }
+  .btn { margin-top:6px; padding:12px 34px; font-size:15px; letter-spacing:2px; cursor:pointer;
+    color:#04202a; border:none; border-radius:30px; font-weight:700;
+    background:linear-gradient(90deg,#7fd7ff,#8affd0); box-shadow:0 6px 22px rgba(90,200,255,.35); }
+  .btn:hover { filter:brightness(1.08); }
+  #win { display:none; }
+  #win .stat { font-size:15px; color:#ffe9a8; }
+  #goFwd { display:none; position:fixed; right:24px; bottom:34px; width:88px; height:88px;
+    border-radius:50%; z-index:6; background:rgba(120,200,255,.18);
+    border:2px solid rgba(140,210,255,.5); color:#cfe6ff; font-size:14px; }
+  @media (pointer:coarse) { #goFwd { display:flex; align-items:center; justify-content:center; } }
+</style>
+</head>
+<body>
+<canvas id="map" width="340" height="340"></canvas>
+<div id="hud">
+  <div>⏱ <b id="time">00:00</b> &nbsp; 🧱 <b id="size">-</b></div>
+  <div><span class="k">W</span><span class="k">A</span><span class="k">S</span><span class="k">D</span> 移动 ·
+       <span class="k">⇧</span> 疾跑 · 鼠标看向</div>
+  <div><span class="k">H</span> 提示路线 · <span class="k">R</span> 换迷宫 · <span class="k">ESC</span> 松开鼠标</div>
+</div>
+<div id="tip">找到发光的青色光柱即为出口</div>
+<button id="goFwd">前进</button>
+
+<div class="panel" id="start">
+  <h1>3D 迷 宫</h1>
+  <p>第一人称随机迷宫 · 每次都是全新布局<br>移动鼠标环视，WASD 前进，找到出口</p>
+  <button class="btn" id="btnStart">进 入 迷 宫</button>
+</div>
+
+<div class="panel" id="win">
+  <h1>走 出 来 了</h1>
+  <div class="stat" id="winStat"></div>
+  <button class="btn" id="btnAgain">再 来 一 局</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+(function(){
+  if (typeof THREE === 'undefined') {
+    document.getElementById('start').innerHTML =
+      '<h1>加载失败</h1><p>Three.js 未能加载，请检查网络后刷新</p>';
+    return;
+  }
+
+  var CELL = 4, WALL_H = 3.2, EYE = 1.6, RADIUS = 0.55;
+  var COLS = 10, ROWS = 10;
+
+  var scene, camera, renderer, mazeGroup, grid, gw, gh;
+  var exitG, exitGx, exitGy, pathCells = [], showPath = false;
+  var yaw = 0, pitch = 0, locked = false, bobT = 0;
+  var keys = {}, touchMove = false, startTime = 0, finished = false;
+  var player = { x: 0, z: 0 };
+  var mapCtx = document.getElementById('map').getContext('2d');
+
+  /* ---------- 程序化纹理 ---------- */
+  function bricks() {
+    var c = document.createElement('canvas'); c.width = c.height = 128;
+    var g = c.getContext('2d');
+    g.fillStyle = '#2b3550'; g.fillRect(0, 0, 128, 128);
+    for (var r = 0; r < 8; r++) {
+      for (var q = 0; q < 4; q++) {
+        var off = (r % 2) * 16;
+        var x = q * 32 + off - 16, y = r * 16;
+        g.fillStyle = '#3d4a6b';
+        g.fillRect(x + 2, y + 2, 28, 12);
+        g.fillStyle = 'rgba(255,255,255,.05)';
+        g.fillRect(x + 2, y + 2, 28, 3);
+      }
+    }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+  function floorTex() {
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var g = c.getContext('2d');
+    g.fillStyle = '#151d30'; g.fillRect(0, 0, 64, 64);
+    g.strokeStyle = '#1e2942'; g.lineWidth = 2;
+    g.strokeRect(1, 1, 62, 62);
+    g.fillStyle = 'rgba(255,255,255,.03)';
+    for (var i = 0; i < 40; i++) g.fillRect(Math.random()*64, Math.random()*64, 2, 2);
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+
+  /* ---------- 迷宫生成（递归回溯 + 少量环路） ---------- */
+  function genMaze(cw, ch) {
+    gw = cw * 2 + 1; gh = ch * 2 + 1;
+    grid = [];
+    for (var y = 0; y < gh; y++) { grid.push([]); for (var x = 0; x < gw; x++) grid[y].push(1); }
+    var vis = [];
+    for (var i = 0; i < ch; i++) { vis.push([]); for (var j = 0; j < cw; j++) vis[i].push(false); }
+    var stack = [[0, 0]]; vis[0][0] = true; grid[1][1] = 0;
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while (stack.length) {
+      var cur = stack[stack.length - 1], cx = cur[0], cy = cur[1];
+      var cand = [];
+      for (var d = 0; d < 4; d++) {
+        var nx = cx + dirs[d][0], ny = cy + dirs[d][1];
+        if (nx >= 0 && ny >= 0 && nx < cw && ny < ch && !vis[ny][nx]) cand.push(dirs[d]);
+      }
+      if (!cand.length) { stack.pop(); continue; }
+      var dd = cand[(Math.random() * cand.length) | 0];
+      var tx = cx + dd[0], ty = cy + dd[1];
+      vis[ty][tx] = true;
+      grid[ty * 2 + 1][tx * 2 + 1] = 0;
+      grid[cy * 2 + 1 + dd[1]][cx * 2 + 1 + dd[0]] = 0;
+      stack.push([tx, ty]);
+    }
+    // 打掉少量内墙形成环路口，避免死板单解
+    var extra = Math.floor(cw * ch * 0.12);
+    for (var e = 0; e < extra; e++) {
+      var gx = 1 + ((Math.random() * (gw - 2)) | 0), gy = 1 + ((Math.random() * (gh - 2)) | 0);
+      if (grid[gy][gx] !== 1) continue;
+      var up = grid[gy-1][gx] === 0 && grid[gy+1][gx] === 0;
+      var lr = grid[gy][gx-1] === 0 && grid[gy][gx+1] === 0;
+      if (up || lr) grid[gy][gx] = 0;
+    }
+  }
+
+  function bfs(sx, sy) {
+    var dist = [], prev = [], q = [[sx, sy]], n = 0;
+    for (var y = 0; y < gh; y++) {
+      dist.push([]); prev.push([]);
+      for (var x = 0; x < gw; x++) { dist[y].push(-1); prev[y].push(null); }
+    }
+    dist[sy][sx] = 0;
+    while (n < q.length) {
+      var c = q[n++], x = c[0], y = c[1];
+      var D = [[1,0],[-1,0],[0,1],[0,-1]];
+      for (var i = 0; i < 4; i++) {
+        var nx = x + D[i][0], ny = y + D[i][1];
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        if (grid[ny][nx] === 1 || dist[ny][nx] >= 0) continue;
+        dist[ny][nx] = dist[y][x] + 1;
+        prev[ny][nx] = [x, y];
+        q.push([nx, ny]);
+      }
+    }
+    var best = [sx, sy], bd = 0;
+    for (var yy = 1; yy < gh; yy += 2) for (var xx = 1; xx < gw; xx += 2)
+      if (dist[yy][xx] > bd) { bd = dist[yy][xx]; best = [xx, yy]; }
+    var p = [], cur = best;
+    while (cur) { p.push(cur); cur = prev[cur[1]][cur[0]]; }
+    return { cell: best, dist: bd, path: p.reverse() };
+  }
+
+  function isWall(gx, gy) {
+    return gx < 0 || gy < 0 || gx >= gw || gy >= gh || grid[gy][gx] === 1;
+  }
+  function blocked(x, z) {
+    var x0 = Math.floor((x - RADIUS) / CELL), x1 = Math.floor((x + RADIUS) / CELL);
+    var z0 = Math.floor((z - RADIUS) / CELL), z1 = Math.floor((z + RADIUS) / CELL);
+    for (var gy = z0; gy <= z1; gy++) for (var gx = x0; gx <= x1; gx++)
+      if (isWall(gx, gy)) return true;
+    return false;
+  }
+  function w(gx) { return gx * CELL + CELL / 2; }
+
+  /* ---------- 场景搭建 ---------- */
+  function build() {
+    if (mazeGroup) { scene.remove(mazeGroup); mazeGroup.traverse(function(o){ if (o.geometry) o.geometry.dispose(); }); }
+    mazeGroup = new THREE.Group(); scene.add(mazeGroup);
+
+    genMaze(COLS, ROWS);
+    var info = bfs(1, 1);
+    exitGx = info.cell[0]; exitGy = info.cell[1];
+    pathCells = info.path;
+
+    // 墙
+    var walls = [];
+    for (var y = 0; y < gh; y++) for (var x = 0; x < gw; x++) if (grid[y][x] === 1) walls.push([x, y]);
+    var geo = new THREE.BoxGeometry(CELL, WALL_H, CELL);
+    var mat = new THREE.MeshLambertMaterial({ map: bricks(), color: 0x9fb4d8 });
+    var inst = new THREE.InstancedMesh(geo, mat, walls.length);
+    var m = new THREE.Matrix4();
+    for (var i = 0; i < walls.length; i++) {
+      m.makeTranslation(w(walls[i][0]), WALL_H / 2, w(walls[i][1]));
+      inst.setMatrixAt(i, m);
+    }
+    inst.instanceMatrix.needsUpdate = true;
+    mazeGroup.add(inst);
+
+    // 地面 + 顶棚
+    var ft = floorTex(); ft.repeat.set(gw, gh);
+    var floor = new THREE.Mesh(new THREE.PlaneGeometry(gw * CELL, gh * CELL),
+      new THREE.MeshLambertMaterial({ map: ft }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(gw * CELL / 2, 0, gh * CELL / 2);
+    mazeGroup.add(floor);
+
+    var ceil = new THREE.Mesh(new THREE.PlaneGeometry(gw * CELL, gh * CELL),
+      new THREE.MeshLambertMaterial({ color: 0x0b1020, side: THREE.DoubleSide }));
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.set(gw * CELL / 2, WALL_H, gh * CELL / 2);
+    mazeGroup.add(ceil);
+
+    // 出口光柱
+    exitG = new THREE.Group();
+    var col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, WALL_H, 16),
+      new THREE.MeshBasicMaterial({ color: 0x66ffcc, transparent: true, opacity: 0.85 }));
+    col.position.y = WALL_H / 2;
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.07, 8, 28),
+      new THREE.MeshBasicMaterial({ color: 0x9effe0 }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.25;
+    var pl = new THREE.PointLight(0x66ffcc, 1.6, 16);
+    pl.position.y = 1.6;
+    exitG.add(col); exitG.add(ring); exitG.add(pl);
+    exitG.position.set(w(exitGx), 0, w(exitGy));
+    exitG.userData.ring = ring;
+    mazeGroup.add(exitG);
+
+    // 起点
+    player.x = w(1); player.z = w(1);
+    yaw = 0; pitch = 0;
+    camera.position.set(player.x, EYE, player.z);
+    finished = false; showPath = false;
+    startTime = performance.now();
+    document.getElementById('size').textContent = COLS + '×' + ROWS;
+  }
+
+  /* ---------- 小地图 ---------- */
+  function drawMap() {
+    var S = 340, pad = 10;
+    var s = Math.min((S - pad * 2) / gw, (S - pad * 2) / gh);
+    var ox = (S - s * gw) / 2, oy = (S - s * gh) / 2;
+    mapCtx.clearRect(0, 0, S, S);
+    for (var y = 0; y < gh; y++) for (var x = 0; x < gw; x++) {
+      mapCtx.fillStyle = grid[y][x] === 1 ? 'rgba(96,124,170,.55)' : 'rgba(22,32,54,.9)';
+      mapCtx.fillRect(ox + x * s, oy + y * s, s + 0.6, s + 0.6);
+    }
+    if (showPath) {
+      mapCtx.strokeStyle = '#ffd977'; mapCtx.lineWidth = 2.4;
+      mapCtx.beginPath();
+      for (var i = 0; i < pathCells.length; i++) {
+        var p = pathCells[i], px = ox + (p[0] + 0.5) * s, py = oy + (p[1] + 0.5) * s;
+        i ? mapCtx.lineTo(px, py) : mapCtx.moveTo(px, py);
+      }
+      mapCtx.stroke();
+    }
+    mapCtx.fillStyle = '#66ffcc';
+    mapCtx.beginPath();
+    mapCtx.arc(ox + (exitGx + 0.5) * s, oy + (exitGy + 0.5) * s, s * 0.55, 0, 6.3);
+    mapCtx.fill();
+    var px2 = ox + (player.x / CELL) * s, py2 = oy + (player.z / CELL) * s;
+    mapCtx.fillStyle = '#ff5a6e';
+    mapCtx.beginPath(); mapCtx.arc(px2, py2, s * 0.5, 0, 6.3); mapCtx.fill();
+    mapCtx.strokeStyle = '#ff5a6e'; mapCtx.lineWidth = 2.6;
+    mapCtx.beginPath(); mapCtx.moveTo(px2, py2);
+    mapCtx.lineTo(px2 - Math.sin(yaw) * s * 1.6, py2 - Math.cos(yaw) * s * 1.6);
+    mapCtx.stroke();
+  }
+
+  /* ---------- 输入 ---------- */
+  document.addEventListener('keydown', function(e) {
+    var k = e.key.toLowerCase();
+    keys[k] = true;
+    if (k === 'h') showPath = !showPath;
+    if (k === 'r' && !finished) build();
+  });
+  document.addEventListener('keyup', function(e) { keys[e.key.toLowerCase()] = false; });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!locked) return;
+    yaw -= e.movementX * 0.0022;
+    pitch -= e.movementY * 0.0022;
+    pitch = Math.max(-1.15, Math.min(1.15, pitch));
+  });
+  document.addEventListener('pointerlockchange', function() {
+    locked = document.pointerLockElement === document.body;
+    if (!locked && !finished) document.getElementById('start').style.display = 'flex';
+  });
+
+  var lastT = null;
+  document.addEventListener('touchstart', function(e) { lastT = e.touches[0]; }, { passive: true });
+  document.addEventListener('touchmove', function(e) {
+    if (!lastT) return;
+    var t = e.touches[0];
+    yaw -= (t.clientX - lastT.clientX) * 0.005;
+    pitch -= (t.clientY - lastT.clientY) * 0.005;
+    pitch = Math.max(-1.15, Math.min(1.15, pitch));
+    lastT = t;
+  }, { passive: true });
+  document.addEventListener('touchend', function() { lastT = null; });
+  var fwdBtn = document.getElementById('goFwd');
+  fwdBtn.addEventListener('touchstart', function(e){ e.stopPropagation(); touchMove = true; }, { passive: true });
+  fwdBtn.addEventListener('touchend', function(e){ e.stopPropagation(); touchMove = false; }, { passive: true });
+
+  function enter() {
+    document.getElementById('start').style.display = 'none';
+    document.getElementById('win').style.display = 'none';
+    if (document.body.requestPointerLock) document.body.requestPointerLock();
+    if (!startTime) startTime = performance.now();
+  }
+  document.getElementById('btnStart').onclick = enter;
+  document.getElementById('btnAgain').onclick = function() { build(); enter(); };
+
+  /* ---------- 主循环 ---------- */
+  function loop() {
+    requestAnimationFrame(loop);
+    var dt = 0.016;
+    var fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    var rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    var mvx = 0, mvz = 0;
+    if (keys['w'] || keys['arrowup'] || touchMove) { mvx += fx; mvz += fz; }
+    if (keys['s'] || keys['arrowdown']) { mvx -= fx; mvz -= fz; }
+    if (keys['a'] || keys['arrowleft']) { mvx -= rx; mvz -= rz; }
+    if (keys['d'] || keys['arrowright']) { mvx += rx; mvz += rz; }
+    var len = Math.hypot(mvx, mvz);
+    var spd = (keys['shift'] ? 8.5 : 5.2) * dt;
+    if (len > 0) {
+      mvx = mvx / len * spd; mvz = mvz / len * spd;
+      if (!blocked(player.x + mvx, player.z)) player.x += mvx;
+      if (!blocked(player.x, player.z + mvz)) player.z += mvz;
+      bobT += dt * 11;
+    } else { bobT += dt * 1.5; }
+
+    camera.position.x = player.x;
+    camera.position.z = player.z;
+    camera.position.y = EYE + Math.sin(bobT) * 0.05;
+    camera.rotation.order = 'YXZ';
+    camera.rotation.set(pitch, yaw, 0);
+
+    if (exitG) {
+      exitG.userData.ring.rotation.z += dt * 1.6;
+      var d = Math.hypot(player.x - w(exitGx), player.z - w(exitGy));
+      if (d < 1.4 && !finished) win();
+    }
+
+    if (!finished) {
+      var t = (performance.now() - startTime) / 1000;
+      var mm = String(Math.floor(t / 60)).padStart(2, '0');
+      var ss = String(Math.floor(t % 60)).padStart(2, '0');
+      document.getElementById('time').textContent = mm + ':' + ss;
+    }
+    drawMap();
+    renderer.render(scene, camera);
+  }
+
+  function win() {
+    finished = true;
+    var t = (performance.now() - startTime) / 1000;
+    document.exitPointerLock && document.exitPointerLock();
+    document.getElementById('winStat').textContent =
+      '用时 ' + t.toFixed(1) + ' 秒 · ' + COLS + '×' + ROWS + ' 迷宫';
+    document.getElementById('win').style.display = 'flex';
+  }
+
+  /* ---------- 初始化 ---------- */
+  function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05060a);
+    scene.fog = new THREE.FogExp2(0x05060a, 0.045);
+
+    camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 200);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0x5a6a92, 0.5));
+    var torch = new THREE.SpotLight(0xfff0d0, 1.3, 34, 0.62, 0.45, 1.2);
+    torch.position.set(0, 0.2, 0);
+    torch.target.position.set(0, 0, -1);
+    camera.add(torch); camera.add(torch.target);
+    scene.add(camera);
+
+    build();
+    addEventListener('resize', function() {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+    loop();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

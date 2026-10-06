@@ -85,12 +85,14 @@ window.AIBENCH = {
       "works": {
         "watch": "hy4preview-watch.html",
         "billiards": "hy4preview-billiards.html",
-        "qingming": "hy4preview-qingming.html"
+        "qingming": "hy4preview-qingming.html",
+        "maze": "hy4preview-maze.html"
       },
       "dates": {
         "watch": "2026-10-06",
         "billiards": "2026-10-06",
-        "qingming": "2026-10-06"
+        "qingming": "2026-10-06",
+        "maze": "2026-10-06"
       }
     },
     {
