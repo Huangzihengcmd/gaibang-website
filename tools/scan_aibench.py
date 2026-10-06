@@ -17,16 +17,21 @@ DATA = r"F:\gaibang-website\aibench\data.js"
 
 # 五道题：keywords 匹配作品文件名；note 匹配「说明」里的 txt 文件名
 TESTS = [
-    {"id": "watch", "name": "机械天文腕表", "icon": "⌚",
-     "keywords": ["天文", "watch", "clock"], "note": "天文机械表"},
-    {"id": "qingming", "name": "赛博朋克清明上河图", "icon": "🏙️",
-     "keywords": ["清明", "qingming"], "note": "赛博朋克清明上河图"},
-    {"id": "billiards", "name": "开放式 3D 台球", "icon": "🎱",
-     "keywords": ["台球", "billiard"], "note": "开放式3D台球"},
-    {"id": "maze", "name": "开放式 3D 迷宫", "icon": "🌀",
-     "keywords": ["迷宫", "maze"], "note": "开放式3D迷宫"},
-    {"id": "astra", "name": "Astra 星域粒子", "icon": "✨",
-     "keywords": ["astra", "星域", "粒子"], "note": "Astra 星域粒子"},
+    {"id": "watch", "name": "机械天文腕表", "en": "ASTRONOMICAL WATCH", "sub": "精密规格",
+     "keywords": ["天文", "watch", "clock"], "note": "天文机械表",
+     "grad": "radial-gradient(circle at 50% 30%, #1f3a5f 0%, #101d2e 55%, #060a12 100%)"},
+    {"id": "qingming", "name": "赛博朋克清明上河图", "en": "CYBERPUNK SCROLL", "sub": "视觉生成",
+     "keywords": ["清明", "qingming"], "note": "赛博朋克清明上河图",
+     "grad": "radial-gradient(circle at 50% 30%, #4a1d5c 0%, #26102f 55%, #0d0710 100%)"},
+    {"id": "billiards", "name": "开放式 3D 台球", "en": "3D POOL", "sub": "开放式提示词",
+     "keywords": ["台球", "billiard"], "note": "开放式3D台球",
+     "grad": "radial-gradient(circle at 50% 30%, #17372f 0%, #0d1a17 55%, #060708 100%)"},
+    {"id": "maze", "name": "开放式 3D 迷宫", "en": "3D MAZE", "sub": "开放式提示词",
+     "keywords": ["迷宫", "maze"], "note": "开放式3D迷宫",
+     "grad": "radial-gradient(circle at 50% 30%, #3d2f14 0%, #231a0b 55%, #0c0904 100%)"},
+    {"id": "astra", "name": "Astra 星域粒子", "en": "ASTRA PARTICLES", "sub": "效果复刻",
+     "keywords": ["astra", "星域", "粒子", "星图"], "note": "Astra 星域粒子",
+     "grad": "radial-gradient(circle at 50% 30%, #16394a 0%, #0b1e28 55%, #040a0e 100%)"},
 ]
 
 def slugify(name):
@@ -97,7 +102,7 @@ def main():
                 models[slug]["dates"][t["id"]] = ""
 
     data = {
-        "tests": [{k: t[k] for k in ("id", "name", "prompt")} for t in TESTS],
+        "tests": [{k: t[k] for k in ("id", "name", "en", "sub", "grad", "prompt")} for t in TESTS],
         "models": [{"slug": s, "name": m["name"], "works": m["works"], "dates": m["dates"]}
                    for s, m in models.items() if m["works"]],
     }
