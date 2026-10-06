@@ -69,10 +69,12 @@ window.AIBENCH = {
       "name": "Hy4 preview",
       "works": {
         "watch": "hy4preview-watch.html",
+        "billiards": "hy4preview-billiards.html",
         "qingming": "hy4preview-qingming.html"
       },
       "dates": {
         "watch": "2026-10-06",
+        "billiards": "2026-10-06",
         "qingming": "2026-10-06"
       }
     },
