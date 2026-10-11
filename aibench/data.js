@@ -83,12 +83,14 @@ window.AIBENCH = {
       "slug": "hy4preview",
       "name": "Hy4 preview",
       "works": {
+        "astra": "hy4preview-astra.html",
         "watch": "hy4preview-watch.html",
         "billiards": "hy4preview-billiards.html",
         "qingming": "hy4preview-qingming.html",
         "maze": "hy4preview-maze.html"
       },
       "dates": {
+        "astra": "2026-10-06",
         "watch": "2026-10-06",
         "billiards": "2026-10-06",
         "qingming": "2026-10-06",
@@ -99,12 +101,14 @@ window.AIBENCH = {
       "slug": "qwen3827b",
       "name": "Qwen3.8-27b",
       "works": {
+        "astra": "qwen3827b-astra.html",
         "billiards": "qwen3827b-billiards.html",
         "watch": "qwen3827b-watch.html",
         "maze": "qwen3827b-maze.html",
         "qingming": "qwen3827b-qingming.html"
       },
       "dates": {
+        "astra": "2026-10-06",
         "billiards": "2026-10-05",
         "watch": "2026-08-30",
         "maze": "2026-10-06",
