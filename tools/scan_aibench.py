@@ -63,13 +63,20 @@ def discover_tests(config):
 
         c = config.get(base) or config.get(base.replace(" ", "")) or {}
         if not c:
-            words = [w for w in re.split(r"[\s\-_]+", base) if w]
+            # 新题目：自动拆词。中文题目截取前 2~4 字片段 + 全名，
+            # 这样「敦煌飞天粒子画」也能匹配到文件名只写了「敦煌飞天」的作品
+            core = re.sub(r"[\s\-_（）()]+", "", base)
+            alias = [base, core]
+            for n in (2, 3, 4):
+                if len(core) >= n:
+                    alias.append(core[:n])
+            alias += [w for w in re.split(r"[\s\-_]+", base) if w]
             c = {
                 "id": "topic%d" % (i + 1),
                 "name": base,
-                "en": words[0].upper() if words else base.upper(),
+                "en": (core[:4] if core else base).upper(),
                 "sub": "未分类",
-                "alias": words + [base, base.replace(" ", "")],
+                "alias": alias,
                 "grad": DEFAULT_GRADS[i % len(DEFAULT_GRADS)],
             }
             need_cfg.append(base)

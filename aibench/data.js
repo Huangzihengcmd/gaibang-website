@@ -34,11 +34,11 @@ window.AIBENCH = {
       "prompt": "请你做一个3D迷宫"
     },
     {
-      "id": "topic5",
+      "id": "dunhuang",
       "name": "敦煌飞天粒子画",
-      "en": "敦煌飞天粒子画",
-      "sub": "未分类",
-      "grad": "radial-gradient(circle at 50% 30%, #16394a 0%, #0b1e28 55%, #040a0e 100%)",
+      "en": "DUNHUANG FLYING APSARA",
+      "sub": "粒子艺术",
+      "grad": "radial-gradient(circle at 50% 30%, #5c3a1d 0%, #2e1d0e 55%, #100a06 100%)",
       "prompt": "请你做一个敦煌飞天粒子画\n\n网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。\n\n用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。"
     },
     {
@@ -57,6 +57,7 @@ window.AIBENCH = {
       "works": {
         "billiards": "glm53flash-billiards.html",
         "maze": "glm53flash-maze.html",
+        "dunhuang": "glm53flash-dunhuang.html",
         "watch": "glm53flash-watch.html",
         "astra": "glm53flash-astra.html",
         "qingming": "glm53flash-qingming.html"
@@ -64,9 +65,30 @@ window.AIBENCH = {
       "dates": {
         "billiards": "2026-10-06",
         "maze": "2026-10-06",
+        "dunhuang": "2026-10-11",
         "watch": "2026-10-06",
         "astra": "2026-10-06",
         "qingming": "2026-10-06"
+      }
+    },
+    {
+      "slug": "spacebunny",
+      "name": "Space bunny",
+      "works": {
+        "billiards": "spacebunny-billiards.html",
+        "maze": "spacebunny-maze.html",
+        "watch": "spacebunny-watch.html",
+        "qingming": "spacebunny-qingming.html",
+        "dunhuang": "spacebunny-dunhuang.html",
+        "astra": "spacebunny-astra.html"
+      },
+      "dates": {
+        "billiards": "2026-10-11",
+        "maze": "2026-10-11",
+        "watch": "2026-10-11",
+        "qingming": "2026-10-11",
+        "dunhuang": "2026-10-11",
+        "astra": "2026-10-11"
       }
     },
     {
@@ -121,24 +143,6 @@ window.AIBENCH = {
         "watch": "2026-08-30",
         "maze": "2026-10-06",
         "qingming": "2026-10-06"
-      }
-    },
-    {
-      "slug": "spacebunny",
-      "name": "Space bunny",
-      "works": {
-        "billiards": "spacebunny-billiards.html",
-        "maze": "spacebunny-maze.html",
-        "watch": "spacebunny-watch.html",
-        "qingming": "spacebunny-qingming.html",
-        "astra": "spacebunny-astra.html"
-      },
-      "dates": {
-        "billiards": "2026-10-11",
-        "maze": "2026-10-11",
-        "watch": "2026-10-11",
-        "qingming": "2026-10-11",
-        "astra": "2026-10-11"
       }
     },
     {
