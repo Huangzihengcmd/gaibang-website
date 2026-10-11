@@ -15,6 +15,12 @@ curl -s -X POST "https://api.indexnow.org/indexnow" \
       \"https://$HOST/news.html\",
       \"https://$HOST/sites.html\",
       \"https://$HOST/about.html\",
-      \"https://$HOST/contact.html\"
+      \"https://$HOST/contact.html\",
+      \"https://$HOST/aibench/\",
+      \"https://$HOST/aibench/test.html?id=watch\",
+      \"https://$HOST/aibench/test.html?id=qingming\",
+      \"https://$HOST/aibench/test.html?id=billiards\",
+      \"https://$HOST/aibench/test.html?id=maze\",
+      \"https://$HOST/aibench/test.html?id=astra\"
     ]
   }" -w "\nHTTP=%{http_code}\n"

@@ -40,26 +40,16 @@
   }
   ::selection{background:#ffffff2b; color:#fff}
 
-  /* ---------- 画布与氛围层 ---------- */
-  .ambient{
-    position:fixed; inset:0; z-index:0; pointer-events:none;
-    background:
-      radial-gradient(58% 52% at 50% 46%,
-        rgba(35,67,95,1) 0%,
-        rgba(35,67,95,0.62) 34%,
-        rgba(35,67,95,0.24) 58%,
-        rgba(35,67,95,0) 78%);
-    opacity:0; transition:opacity var(--ambient-fade-duration) cubic-bezier(.6,0,.4,1);
-  }
-  body.lit .ambient{opacity:var(--ambient-opacity)}
-
+  /* ---------- 画布与氛围层 ----------
+     环境辉光画在 canvas 内部（见 JS drawAmbient）。
+     canvas 是不透明黑底，任何位于其下的 CSS 图层都会被完全遮住。 */
   #stars{
     position:fixed; inset:0; width:100%; height:100%; z-index:1; display:block;
     background:var(--void);
   }
   .vignette{
     position:fixed; inset:0; z-index:2; pointer-events:none;
-    background:radial-gradient(120% 92% at 50% 50%, transparent 46%, rgba(0,0,0,.42) 78%, rgba(0,0,0,.78) 100%);
+    background:radial-gradient(120% 92% at 50% 50%, transparent 48%, rgba(0,0,0,.26) 78%, rgba(0,0,0,.58) 100%);
   }
   .drag-surface{
     position:fixed; inset:0; z-index:3; width:100%; height:100%;
@@ -205,7 +195,6 @@
 </head>
 <body>
 
-<div class="ambient" aria-hidden="true"></div>
 <canvas id="stars" aria-hidden="true"></canvas>
 <div class="vignette" aria-hidden="true"></div>
 <button class="drag-surface" aria-label="拖拽旋转星系" tabindex="-1"></button>
@@ -320,7 +309,7 @@
 const CFG = {
   starCount: 4000,
   backgroundRatio: 0.14,
-  scatter: 0.045,          // 相对形状高度的横向带宽
+  scatter: 0.065,          // 星带半宽（相对归一化形状高度，原版 0.4/9.7）
   size: 2.05,
   sizeFalloff: 0.45,
   dimScale: 0.45,          // 散开时暗星缩放
@@ -338,6 +327,7 @@ const CFG = {
   pixelBudget: 2.4e6,
   tiltPeak: -52 * Math.PI / 180,
   targetFrameMs: 21,
+  ambientOpacity: 0.55,
   coreCluster: 96,
   clusterRadius: 0.15,
   scrollStarDrift: 3,
@@ -398,6 +388,20 @@ const bloomB = document.createElement('canvas');
 const bactx = bloomA.getContext('2d');
 const bbctx = bloomB.getContext('2d');
 
+// 环境辉光 #23435f：canvas 内绘制，且排在辉光合成之后，
+// 这样它不会被 bloom 拾取（原版它属于后处理的 tint 阶段）
+let ambientGrad = null;
+function buildAmbient() {
+  if (W <= 0 || H <= 0) return;
+  const r = Math.max(W, H) * 0.62;
+  const g = ctx.createRadialGradient(W / 2, H * 0.46, 0, W / 2, H * 0.46, r);
+  g.addColorStop(0.00, 'rgba(35,67,95,1)');
+  g.addColorStop(0.34, 'rgba(35,67,95,0.62)');
+  g.addColorStop(0.58, 'rgba(35,67,95,0.24)');
+  g.addColorStop(1.00, 'rgba(35,67,95,0)');
+  ambientGrad = g;
+}
+
 function resize() {
   const cssW = window.innerWidth, cssH = window.innerHeight;
   const budgetScale = Math.sqrt(CFG.pixelBudget / Math.max(1, cssW * cssH));
@@ -416,6 +420,7 @@ function resize() {
   bloomB.width = Math.max(1, Math.round(canvas.width / 12));
   bloomB.height = Math.max(1, Math.round(canvas.height / 12));
 
+  buildAmbient();
   measureLayout();
 }
 
@@ -485,8 +490,8 @@ function galaxyShape() {
     const pts = [];
     for (let i = 0; i < N; i++) {
       const t = i / (N - 1);
-      const r = Math.pow(t, 0.66);
-      const ang = a * (Math.PI * 2 / ARMS) + t * Math.PI * 2.35;
+      const r = Math.pow(t, 0.85);
+      const ang = a * (Math.PI * 2 / ARMS) + t * Math.PI * 1.2;
       const wob = Math.sin(t * Math.PI * 3 + a * 1.7) * 0.055;
       const rr = r + wob * t;
       pts.push([
@@ -589,7 +594,7 @@ const bgTw = new Float32Array(NBG), bgCol = new Uint8Array(NBG);
   for (let i = 0; i < N; i++) {
     sU[i] = rnd();
     sAcross[i] = (rnd() * 2 - 1) * CFG.scatter;
-    sDepth[i] = (rnd() * 2 - 1) * 0.06;
+    sDepth[i] = (rnd() * 2 - 1) * CFG.scatter;   // 与横向同尺度 → 任意角度看都是管状
     sSize[i] = 0.55 + rnd() * 0.85;
     sTw[i] = rnd() * Math.PI * 2;
     sFlow[i] = 0.6 + rnd() * 0.9;
@@ -675,6 +680,7 @@ const state = {
   dpr: 1,
   shapeCX: null, shapeCY: null,   // 形状中心跟随提示框
   quality: 1,                     // 自适应降级：保留的暗星比例
+  bloomOn: true,                  // 低帧率时跳过 bloom，但星星永不跳过
   frameAvg: 16
 };
 
@@ -764,7 +770,8 @@ function draw(time) {
   const dt = Math.min(0.05, now - state.t || 0.016);
   state.t = now;
 
-  // 自适应画质：帧时间偏高时裁剪暗星，恢复后再补回
+  // 自适应画质：帧时间偏高时先裁暗星，再差就跳过 bloom（原版规则：
+  // 降级时跳 bloom pass，但绝不跳过星星本身）
   if (!REDUCED) {
     state.frameAvg = state.frameAvg * 0.92 + dt * 1000 * 0.08;
     if (state.frameAvg > CFG.targetFrameMs && state.quality > 0.55) {
@@ -772,9 +779,10 @@ function draw(time) {
     } else if (state.frameAvg < 14.5 && state.quality < 1) {
       state.quality = Math.min(1, state.quality + 0.004);
     }
+    if (state.frameAvg > 27 && state.bloomOn) state.bloomOn = false;
+    else if (state.frameAvg < 20 && !state.bloomOn) state.bloomOn = true;
   }
 
-  const anim = REDUCED ? 0 : 1;
   state.intro = clamp((now - introStart) / CFG.introDuration, 0, 1);
   const introE = easeOut(state.intro);
 
@@ -784,8 +792,9 @@ function draw(time) {
   const tiltAng = CFG.tiltPeak * state.tilt;
   const cosT = Math.cos(tiltAng), sinT = Math.sin(tiltAng);
   const baseYaw = state.yaw + state.dragYaw;
-  const shapeYaw = CFG.shapeSwing * Math.sin(state.shapeStrength * Math.PI * 0.5)
-                 + (REDUCED ? 0 : now * 0.045 * state.shapeStrength);
+  // 原版形状只有「形成时摆入 0.42 rad」，不做持续自转——
+  // 否则形状角度随时间漂移，光标根本认不出来
+  const shapeYaw = CFG.shapeSwing * smooth(state.shapeStrength);
   const spin = REDUCED ? 0 : now * 0.03;
 
   // 形状几何缩放：contain 到 fillX/fillY 的框内
@@ -872,9 +881,9 @@ function draw(time) {
     if (str > 0.0001) {
       const uA = fract(sU[i] - flow * act.flowMul);
       sampleLayer(act.layers[Math.min(act.layers.length - 1, (seedL * act.layers.length) | 0)], uA);
-      const ax = samp[0] + samp[3] * sAcross[i] * 1.25 + samp[6] * sDepth[i];
-      const ay = samp[1] + samp[4] * sAcross[i] * 1.25 + samp[7] * sDepth[i];
-      const az = samp[2] + samp[5] * sAcross[i] * 1.25 + samp[8] * sDepth[i];
+      const ax = samp[0] + samp[3] * sAcross[i] + samp[6] * sDepth[i];
+      const ay = samp[1] + samp[4] * sAcross[i] + samp[7] * sDepth[i];
+      const az = samp[2] + samp[5] * sAcross[i] + samp[8] * sDepth[i];
       x = lerp(x, ax, str); y = lerp(y, ay, str); z = lerp(z, az, str);
     }
 
@@ -943,22 +952,22 @@ function draw(time) {
     const railShrink = sRail[i] ? lerp(1, sBright[i] ? 0.7 : CFG.dimScale, smooth(clamp(sc, 0, 1))) : 1;
     const depthDim = 0.62 + 0.38 * (0.5 + Z2 * 0.5);
 
-    // 曲线两端淡出，掩盖流动循环的跳点
+    // 只在流动循环接缝处极窄地淡出（范围过宽会把旋臂外段整段淡没）
     const uNow = fract(sU[i] - flowT * sFlow[i] * (str > 0.5 ? act.flowMul : gal.flowMul));
-    const edge = cluster ? 1 : Math.min(1, uNow / 0.07) * Math.min(1, (1 - uNow) / 0.07);
+    const edge = cluster ? 1 : Math.min(1, uNow / 0.025) * Math.min(1, (1 - uNow) / 0.025);
 
     // 入场是「聚拢」而不是「淡入」：位置插值负责收敛，这里只做很轻的亮度爬升
-    let alpha = dimmed * tw * railDim * depthDim * (0.32 + 0.68 * introE) * (0.16 + 0.84 * edge);
+    let alpha = dimmed * tw * railDim * depthDim * (0.32 + 0.68 * introE) * (0.4 + 0.6 * edge);
     if (alpha <= 0.012) continue;
 
     let size = CFG.size * sSize[i] * fall * railShrink * (0.75 + 0.45 * introE);
     if (sx < -40 || sx > W + 40 || sy < -40 || sy > H + 40) continue;
 
     const col = sCol[i];
-    // 光晕（只给亮星，控制开销）
+    // 光晕（只给亮星，控制开销）——半径收小，保住星星核心的锐度
     if (sBright[i] && alpha > 0.09) {
-      const hs = size * (str > 0.2 ? 4.6 : 5.4);
-      ctx.globalAlpha = Math.min(1, alpha * 0.34);
+      const hs = size * (str > 0.2 ? 3.0 : 3.5);
+      ctx.globalAlpha = Math.min(1, alpha * 0.26);
       ctx.drawImage(haloSprites[col], sx - hs, sy - hs, hs * 2, hs * 2);
     }
     // 核心点
@@ -971,7 +980,8 @@ function draw(time) {
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 
-  bactx.setTransform(1, 0, 0, 1, 0, 0);
+  if (state.bloomOn) {
+    bactx.setTransform(1, 0, 0, 1, 0, 0);
   bactx.globalCompositeOperation = 'source-over';
   bactx.clearRect(0, 0, bloomA.width, bloomA.height);
   bactx.drawImage(canvas, 0, 0, bloomA.width, bloomA.height);
@@ -987,10 +997,19 @@ function draw(time) {
   bbctx.drawImage(bloomB, 0, 0);
 
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.42;
+  ctx.globalAlpha = 0.30;
   ctx.drawImage(bloomA, 0, 0, W, H);
-  ctx.globalAlpha = 0.34;
+  ctx.globalAlpha = 0.20;
   ctx.drawImage(bloomB, 0, 0, W, H);
+  }
+
+  // 环境辉光：加法叠在最底层，5.5s 随入场渐入到 55%
+  if (ambientGrad && introE > 0.001) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = CFG.ambientOpacity * introE;
+    ctx.fillStyle = ambientGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
@@ -1022,11 +1041,13 @@ window.addEventListener('pointermove', e => {
   schedule();
 }, { passive: true });
 
-window.addEventListener('pointerleave', () => { state.pActive = false; schedule(); });
+// pointerleave 在 window 上不可靠，挂到 document；再加 blur 兜底
+document.addEventListener('mouseleave', () => { state.pActive = false; schedule(); });
 window.addEventListener('blur', () => { state.pActive = false; });
 
 dragSurface.addEventListener('pointerdown', e => {
-  if (e.target.closest('a,button')) return;
+  // 注意：这里的 e.target 就是 dragSurface 自己，不能再做 closest('a,button') 排除
+  if (e.button !== undefined && e.button !== 0) return;   // 只响应主键
   state.dragging = true;
   state.dragStartX = e.clientX;
   state.dragStartYaw = state.dragYaw;
@@ -1052,8 +1073,6 @@ replayBtn.addEventListener('click', () => {
   introStart = performance.now() / 1000;
   state.intro = 0;
   window.scrollTo({ top: 0, behavior: REDUCED ? 'auto' : 'smooth' });
-  document.body.classList.remove('lit');
-  requestAnimationFrame(() => document.body.classList.add('lit'));
   if (REDUCED) draw(performance.now());
 });
 
@@ -1076,7 +1095,6 @@ document.querySelectorAll('[data-split]').forEach(el => {
 /* ---------------------------- 启动 ---------------------------- */
 resize();
 measureLayout();
-document.body.classList.add('lit');
 state.scrollY = window.scrollY || 0;
 onScroll();
 

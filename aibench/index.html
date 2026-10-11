@@ -36,16 +36,6 @@ header.site { padding: 44px 0 20px; }
 .top-link { float: right; font-size: 13px; color: var(--text-tertiary); text-decoration: none; }
 .top-link:hover { color: var(--text-primary); }
 
-.models-bar { margin: 26px auto 30px; }
-.models-bar-title {
-  font-size: 12px; letter-spacing: 0.14em; color: var(--text-tertiary);
-  text-transform: uppercase; margin-bottom: 10px;
-}
-.models-bar-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.models-bar-item {
-  font-size: 12px; background: var(--tag-bg); color: var(--tag-text);
-  padding: 5px 12px; border-radius: 20px; border: 1px solid transparent;
-}
 
 .grid {
   display: grid;
@@ -130,11 +120,6 @@ footer {
     <p class="subtitle">同一道测试题，看看各家模型交出什么答卷</p>
   </header>
 
-  <div class="models-bar">
-    <div class="models-bar-title">参与模型</div>
-    <div class="models-bar-list" id="modelBar"></div>
-  </div>
-
   <div class="grid" id="grid"></div>
 
   <footer>
@@ -166,11 +151,6 @@ function render() {
     document.getElementById("grid").innerHTML = "<p>数据加载失败：data.js</p>"; return;
   }
 
-  document.getElementById("modelBar").innerHTML = d.models.map(function(m) {
-    var n = Object.keys(m.works || {}).length;
-    return '<span class="models-bar-item">' + esc(m.name) + " · " + n + "</span>";
-  }).join("");
-
   function latest(t) {
     var s = "";
     d.models.forEach(function(m) {
@@ -186,7 +166,6 @@ function render() {
 
   document.getElementById("grid").innerHTML = tests.map(function(t) {
     var done = d.models.filter(function(m) { return m.works && m.works[t.id]; });
-    var pending = d.models.filter(function(m) { return !(m.works && m.works[t.id]); });
     var latestStr = latest(t);
     var age = daysAgo(latestStr);
     var badge = "";
@@ -199,8 +178,6 @@ function render() {
       return '<a class="model-tag' + (isNew ? " model-tag-new" : "") + '" href="works/' +
              esc(m.works[t.id]) + '" target="_blank" rel="noopener">' +
              esc(m.name) + "</a>";
-    }).join("") + pending.map(function(m) {
-      return '<span class="model-tag pending">' + esc(m.name) + " · 未提交</span>";
     }).join("");
 
     return '<article class="card">' +
