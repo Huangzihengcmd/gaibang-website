@@ -68,7 +68,7 @@ print("remote files: %d" % len(remote_paths))
 
 # 3. 新增/修改
 upsert = [
-    "index.html", "news.html", "sites.html", "sitemap.xml", "robots.txt",
+    "index.html", "news.html", "sites.html", "sitemap.xml", "robots.txt", "README.md",
     "about.html", "contact.html", "BingSiteAuth.xml",
     "aibench/index.html", "aibench/data.js", "aibench/test.html",
     "tools/scan_aibench.py", "tools/api_push.py", "tools/check_remote.py", "tools/auto_sync.py",
