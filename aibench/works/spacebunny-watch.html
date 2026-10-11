@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>LUNARIS · 天文机械腕表</title>
+<style>
+  :root{
+    --watch: clamp(250px, 78vmin, 500px);
+    --ink:#e9edf3;
+    --dim:#8c95a5;
+    --gold:#d9a15f;
+    --hair:rgba(255,255,255,.10);
+    --glass:rgba(255,255,255,.035);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100svh;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:clamp(14px,2.6vmin,30px);
+    padding:clamp(16px,3vmin,44px) clamp(12px,3vmin,28px);
+    background:radial-gradient(130% 95% at 50% -10%,#1b2130 0%,#0c0f16 46%,#05060a 100%);
+    color:var(--ink);
+    font-family:"Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(58% 42% at 50% 40%,rgba(130,160,215,.08),transparent 72%);
+  }
+  .stage{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:clamp(14px,2.4vmin,28px);width:100%}
+
+  /* ---------------- 腕表本体 ---------------- */
+  .watch{display:flex;flex-direction:column;align-items:center}
+  .strap{
+    position:relative;width:54%;height:calc(var(--watch)*.185);
+    background:
+      linear-gradient(180deg,#3a2418 0%,#241610 26%,#1b100c 62%,#2b1a13 100%);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.7), inset 0 8px 18px rgba(255,255,255,.05), inset 0 -10px 20px rgba(0,0,0,.6);
+    flex:none;
+  }
+  .strap::after{
+    content:"";position:absolute;inset:7px 11px;border-radius:5px;
+    border:1px dashed rgba(226,203,168,.30);
+  }
+  .strap.top{clip-path:polygon(0 0,100% 0,86% 100%,14% 100%);border-radius:10px 10px 0 0}
+  .strap.bottom{clip-path:polygon(14% 0,86% 0,100% 100%,0 100%);border-radius:0 0 10px 10px}
+
+  .case{
+    position:relative;width:var(--watch);height:var(--watch);border-radius:50%;flex:none;
+    padding:calc(var(--watch)*.030);
+    background:conic-gradient(from 205deg,
+      #5d646e,#c8cfd7 9%,#727a85 18%,#eef2f7 27%,#666d78 38%,
+      #b6bec7 50%,#6d747f 61%,#e9eef3 72%,#7b828d 84%,#5d646e);
+    box-shadow:
+      0 34px 64px -22px rgba(0,0,0,.9),
+      0 6px 16px rgba(0,0,0,.5),
+      inset 0 0 0 1px rgba(255,255,255,.30),
+      inset 0 0 0 3px rgba(0,0,0,.35);
+  }
+  .case::before{
+    content:"";position:absolute;inset:calc(var(--watch)*.013);border-radius:50%;
+    background:conic-gradient(from 20deg,#7f8791,#3f454e 25%,#aab2bb 45%,#454b54 70%,#8d949e 88%,#7f8791);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.5), inset 0 -1px 2px rgba(0,0,0,.6);
+  }
+  .crown{
+    position:absolute;right:-3.6%;top:50%;transform:translateY(-50%);
+    width:5.6%;height:14%;border-radius:2px;
+    background:repeating-linear-gradient(0deg,#9aa2ad 0 2px,#5f666f 2px 4px);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.55), 0 3px 6px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.18);
+  }
+  .crown::after{
+    content:"";position:absolute;left:100%;top:50%;transform:translateY(-50%);
+    width:38%;height:52%;border-radius:2px;
+    background:linear-gradient(90deg,#8d949e,#5b626b);
+  }
+  .dial{
+    position:relative;width:100%;height:100%;border-radius:50%;overflow:hidden;
+    background:#06080d;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.85), inset 0 0 34px rgba(0,0,0,.95);
+  }
+  .dial canvas{position:absolute;display:block}
+  .glass{
+    position:absolute;inset:calc(var(--watch)*.030);border-radius:50%;pointer-events:none;
+    background:linear-gradient(128deg,rgba(255,255,255,.13) 0%,rgba(255,255,255,.045) 16%,rgba(255,255,255,0) 40%);
+  }
+  .glass::after{
+    content:"";position:absolute;inset:-30%;
+    background:linear-gradient(102deg,transparent 42%,rgba(255,255,255,.085) 50%,transparent 58%);
+    animation:sheen 11s ease-in-out infinite;
+  }
+  @keyframes sheen{0%,100%{transform:translateX(-26%)}50%{transform:translateX(26%)}}
+
+  /* ---------------- 面板 ---------------- */
+  .panel{
+    width:min(100%,760px);display:grid;gap:clamp(10px,1.6vmin,16px);
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  }
+  .card{
+    border:1px solid var(--hair);border-radius:14px;padding:clamp(12px,1.8vmin,18px);
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.012));
+    backdrop-filter:blur(6px);
+    box-shadow:0 12px 30px -20px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .ttl{
+    font-size:10px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;margin-bottom:10px;
+  }
+  .ttl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--hair),transparent)}
+  .big{
+    font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+    font-size:clamp(30px,6.4vmin,44px);line-height:1;letter-spacing:.02em;font-weight:300;
+    color:#f2f5fa;text-shadow:0 0 22px rgba(140,180,255,.18);
+  }
+  .big small{font-size:.46em;color:var(--dim);margin-left:2px}
+  .btns{display:flex;gap:8px;margin:14px 0 12px;flex-wrap:wrap}
+  .btn{
+    flex:1 1 0;min-width:74px;cursor:pointer;font:inherit;font-size:13px;letter-spacing:.06em;
+    color:#eef2f7;padding:9px 10px;border-radius:9px;
+    border:1px solid rgba(255,255,255,.16);
+    background:linear-gradient(180deg,#4b525c,#31363e);
+    box-shadow:0 1px 0 rgba(255,255,255,.22) inset,0 -2px 0 rgba(0,0,0,.35) inset,0 4px 10px -6px #000;
+    transition:transform .12s ease,filter .18s ease,box-shadow .18s ease;
+  }
+  .btn:hover{filter:brightness(1.14)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{border-color:rgba(217,161,95,.45);background:linear-gradient(180deg,#6c5233,#3d2e1e)}
+  .btn[aria-pressed="true"]{box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 0 0 1px rgba(217,161,95,.7),0 0 16px -4px rgba(217,161,95,.6)}
+  .btn:focus-visible,.city:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .laps{display:flex;flex-direction:column;gap:4px;max-height:132px;overflow:auto;font-variant-numeric:tabular-nums}
+  .lap{
+    display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#cdd5e0;
+    padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.032);
+    border-left:2px solid rgba(217,161,95,.55);
+  }
+  .lap span:first-child{color:var(--dim);letter-spacing:.08em}
+  .lap.best{border-left-color:#63d29a}
+  .empty{font-size:12px;color:#5d6675;letter-spacing:.08em;padding:6px 2px}
+  .cities{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .city{
+    flex:1 1 0;min-width:62px;cursor:pointer;font:inherit;font-size:12.5px;padding:8px 4px;border-radius:9px;
+    color:#cfd6e1;border:1px solid var(--hair);background:rgba(255,255,255,.03);
+    transition:all .18s ease;
+  }
+  .city:hover{background:rgba(255,255,255,.08);color:#fff}
+  .city[aria-pressed="true"]{
+    color:#0d1016;font-weight:600;
+    background:linear-gradient(180deg,#e6ecf4,#b9c3d0);border-color:transparent;
+    box-shadow:0 4px 14px -6px rgba(190,215,255,.6);
+  }
+  .kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;padding:5px 0;border-bottom:1px dashed rgba(255,255,255,.07)}
+  .kv:last-child{border-bottom:0}
+  .kv span{color:var(--dim);letter-spacing:.1em}
+  .kv b{font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:.03em}
+  .foot{
+    font-size:10px;letter-spacing:.2em;color:#4e5666;text-align:center;
+    display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+  }
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+  @media (prefers-reduced-motion: reduce){
+    .glass::after{animation:none;opacity:0}
+    .btn{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="watch">
+    <div class="strap top" aria-hidden="true"></div>
+    <div class="case">
+      <div class="crown" aria-hidden="true"></div>
+      <div class="dial" id="dial">
+        <canvas id="cMain" aria-hidden="true"></canvas>
+
+        <div class="sd" id="sdMoon" role="img" aria-label="月相表盘：正在计算">
+          <canvas aria-hidden="true"></canvas>
+        </div>
+        <div class="sd" id="sdC30" role="img" aria-label="计时码表三十分表盘：已归零">
+          <canvas aria-hidden="true"></canvas>
+        </div>
+        <div class="sd" id="sdC9" role="img" aria-label="计时码表秒表盘：已归零">
+          <canvas aria-hidden="true"></canvas>
+        </div>
+        <div class="sd" id="sdDN" role="img" aria-label="昼夜表盘：正在计算">
+          <canvas aria-hidden="true"></canvas>
+        </div>
+      </div>
+      <div class="glass" aria-hidden="true"></div>
+    </div>
+    <div class="strap bottom" aria-hidden="true"></div>
+  </div>
+
+  <div class="panel">
+    <section class="card" aria-labelledby="t-chrono">
+      <div class="ttl" id="t-chrono">Chronograph</div>
+      <div class="big" id="chrBig" role="timer" aria-live="off" aria-label="计时器读数">00:00<small>.00</small></div>
+      <div class="btns" role="group" aria-label="计时码表控制">
+        <button class="btn primary" id="btnStart" type="button" aria-pressed="false">开始</button>
+        <button class="btn" id="btnLap" type="button">计圈</button>
+        <button class="btn" id="btnReset" type="button">归零</button>
+      </div>
+      <div class="laps" id="laps"><div class="empty">尚无计圈记录</div></div>
+    </section>
+
+    <section class="card" aria-labelledby="t-day">
+      <div class="ttl" id="t-day">Day / Night · Sunrise</div>
+      <div class="cities" id="cities" role="group" aria-label="选择城市以计算日出日落"></div>
+      <div class="kv"><span>当地时间</span><b id="cityTime">--:--</b></div>
+      <div class="kv"><span>日出</span><b id="sunRise">--:--</b></div>
+      <div class="kv"><span>日落</span><b id="sunSet">--:--</b></div>
+      <div class="kv"><span>昼长</span><b id="dayLen">--:--</b></div>
+      <div class="kv"><span>月相 / 月龄</span><b id="moonInfo">--</b></div>
+    </section>
+  </div>
+
+  <div class="foot" aria-hidden="true">
+    <span>CAL. 28 800 A/H</span><span>31 JEWELS</span><span>100 M</span><span>NATIVE RENDER · NO LIBRARIES</span>
+  </div>
+
+  <div class="sr-only" id="live" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   0. 基础常量与工具
+   ============================================================ */
+var TAU = Math.PI * 2, D2R = Math.PI / 180, R2D = 180 / Math.PI;
+var FONT = '"Helvetica Neue",Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif';
+var MONO = '"SF Mono",ui-monospace,Menlo,Consolas,"Roboto Mono",monospace';
+var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+try{
+  var _mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (_mq.addEventListener) _mq.addEventListener('change', function(e){ REDUCED = e.matches; lastPaintKey = -1; });
+}catch(err){}
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function pad2(n){ n=Math.floor(n); return (n<10?'0':'')+n; }
+function norm360(a){ a%=360; return a<0?a+360:a; }
+function norm24(a){ a%=24; return a<0?a+24:a; }
+
+function rr(ctx,x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function circ(ctx,x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,TAU); }
+function tracked(ctx, text, x, y, sp, align){
+  var chars = String(text).split(''), i, w, total = 0, ws = [];
+  for(i=0;i<chars.length;i++){ w = ctx.measureText(chars[i]).width; ws.push(w); total += w + sp; }
+  total -= sp;
+  var cx = (align === 'center') ? x - total/2 : (align === 'right') ? x - total : x;
+  var old = ctx.textAlign; ctx.textAlign = 'left';
+  for(i=0;i<chars.length;i++){ ctx.fillText(chars[i], cx, y); cx += ws[i] + sp; }
+  ctx.textAlign = old;
+  return total;
+}
+function fmtClock(dec, withSec){
+  var h = Math.floor(dec/3600), m = Math.floor((dec%3600)/60), s = Math.floor(dec%60);
+  return pad2(h)+':'+pad2(m)+(withSec?':'+pad2(s):'');
+}
+function fmtStop(ms){
+  var t = Math.max(0, ms);
+  var m = Math.floor(t/60000), s = Math.floor((t%60000)/1000), c = Math.floor((t%1000)/10);
+  return pad2(m)+':'+pad2(s)+'.'+pad2(c);
+}
+
+/* ============================================================
+   1. 画布与几何布局
+   ============================================================ */
+var dialEl = document.getElementById('dial');
+var cMain  = document.getElementById('cMain');
+var mCtx   = cMain.getContext('2d');
+
+var SUBS = {
+  moon: document.getElementById('sdMoon'),
+  c30 : document.getElementById('sdC30'),
+  c9  : document.getElementById('sdC9'),
+  dn  : document.getElementById('sdDN')
+};
+function subCtx(key){
+  var cv = SUBS[key].querySelector('canvas');
+  return { el:SUB[keyName(key)] || SUBS[key], cv:cv, ctx:cv.getContext('2d') };
+}
+function keyName(){ return null; }
+var SUB = {
+  moon:{ el:SUBS.moon, cv:SUBS.moon.querySelector('canvas'), ctx:null },
+  c30 :{ el:SUBS.c30,  cv:SUBS.c30.querySelector('canvas'),  ctx:null },
+  c9  :{ el:SUBS.c9,   cv:SUBS.c9.querySelector('canvas'),   ctx:null },
+  dn  :{ el:SUBS.dn,   cv:SUBS.dn.querySelector('canvas'),   ctx:null }
+};
+Object.keys(SUB).forEach(function(k){ SUB[k].ctx = SUB[k].cv.getContext('2d'); });
+
+var GEO = { s:0, R:0, rs:0, dd:0, dpr:1 };
+
+function layout(){
+  var rect = dialEl.getBoundingClientRect();
+  var s = Math.max(160, Math.round(Math.min(rect.width, rect.height)));
+  var dpr = clamp(window.devicePixelRatio || 1, 1, 2.5);
+  GEO.s = s; GEO.R = s/2; GEO.dpr = dpr;
+  GEO.rs = Math.round(s * 0.1225);
+  GEO.dd = s * 0.236;
+
+  cMain.width = Math.round(s*dpr); cMain.height = Math.round(s*dpr);
+  cMain.style.width = s+'px'; cMain.style.height = s+'px';
+  mCtx.setTransform(dpr,0,0,dpr,0,0);
+
+  var d = GEO.rs * 2;
+  var pos = {
+    moon:[GEO.R, GEO.R - GEO.dd],
+    c30 :[GEO.R + GEO.dd, GEO.R],
+    dn  :[GEO.R, GEO.R + GEO.dd],
+    c9  :[GEO.R - GEO.dd, GEO.R]
+  };
+  Object.keys(SUB).forEach(function(k){
+    var o = SUB[k], p = pos[k];
+    o.cv.width = Math.round(d*dpr); o.cv.height = Math.round(d*dpr);
+    o.cv.style.width = d+'px'; o.cv.style.height = d+'px';
+    o.cv.style.left = Math.round(p[0] - d/2) + 'px';
+    o.cv.style.top  = Math.round(p[1] - d/2) + 'px';
+    o.ctx.setTransform(dpr,0,0,dpr,0,0);
+    o.r = GEO.rs; o.cx = d/2; o.cy = d/2;
+  });
+  lastPaintKey = -1;
+  needCityRefresh = true;
+}
+if (window.ResizeObserver) new ResizeObserver(layout).observe(dialEl);
+window.addEventListener('resize', function(){ layout(); });
+
+/* ============================================================
+   2. 时间基准 —— 全部由 Date.now() 绝对推导，绝不累加，故无漂移
+   ============================================================ */
+function nowParts(){
+  var d = new Date();
+  return { d:d, h:d.getHours(), m:d.getMinutes(), s:d.getSeconds(), ms:d.getMilliseconds(),
+           dow:d.getDay(), date:d.getDate(), month:d.getMonth()+1, year:d.getFullYear() };
+}
+
+/* ============================================================
+   3. 月相（自行实现，精度远优于 1 天）
+   ============================================================ */
+var SYNODIC = 29.530588853;        // 朔望月长度（日）
+var NEW_MOON_JD = 2451550.09766;   // 2000-01-06 18:14 UT 朔
+var MOON_NAMES = ['新月','娥眉月','上弦月','盈凸月','满月','亏凸月','下弦月','残月'];
+var CRATERS = [[-.24,-.16,.18],[.19,-.31,.12],[.31,.13,.21],[-.05,.35,.13],[-.40,.10,.10],[.03,-.03,.09],[.46,-.09,.07],[-.31,-.42,.06],[.14,.40,.06]];
+
+function moonPhase(date){
+  var jd = date.getTime()/86400000 + 2440587.5;   // 儒略日
+  var age = (jd - NEW_MOON_JD) % SYNODIC;
+  if (age < 0) age += SYNODIC;
+  return { phase: age/SYNODIC, age: age,
+           illum: (1 - Math.cos(TAU * (age/SYNODIC)))/2,
+           waxing: (age/SYNODIC) < 0.5 };
+}
+function moonPath(p, r, waxing){
+  var c = Math.cos(TAU * p);
+  var path = new Path2D();
+  path.arc(0, 0, r, -Math.PI/2, Math.PI/2, !waxing);          // 受光半圆
+  path.ellipse(0, 0, Math.max(0.0001, Math.abs(c)*r), r, 0,
+               Math.PI/2, -Math.PI/2, c < 0 ? false : true);   // 明暗界线
+  path.closePath();
+  return path;
+}
+
+/* ============================================================
+   4. 日出日落（NOAA / 天文算法，现场计算）
+   ============================================================ */
+function doyOf(y, m, d){ return Math.floor((Date.UTC(y, m, d) - Date.UTC(y, 0, 1)) / 86400000); }
+function nthSun(y, m, n){ var dt = new Date(Date.UTC(y, m, 1)); var off = (7 - dt.getUTCDay()) % 7 + (n-1)*7; return doyOf(y, m, 1 + off); }
+function lastSun(y, m){ var dt = new Date(Date.UTC(y, m+1, 0)); return doyOf(y, m, dt.getUTCDate() - dt.getUTCDay()); }
+
+var CITIES = [
+  { code:'BJS', name:'北京', lat: 39.9042, lon: 116.4074, std:  8, dst:null },
+  { code:'LON', name:'伦敦', lat: 51.5074, lon:  -0.1278, std:  0, dst:'eu' },
+  { code:'NYC', name:'纽约', lat: 40.7128, lon: -74.0060, std: -5, dst:'us' },
+  { code:'SYD', name:'悉尼', lat:-33.8688, lon: 151.2093, std: 10, dst:'au' }
+];
+function cityOffset(c, y, m, d){
+  if (!c.dst) return c.std;
+  var i = doyOf(y, m, d);
+  if (c.dst === 'us'){ var a = nthSun(y,2,2), b = nthSun(y,10,1); return (i >= a && i < b) ? c.std+1 : c.std; }
+  if (c.dst === 'eu'){ var a2 = lastSun(y,2), b2 = lastSun(y,9); return (i >= a2 && i < b2) ? c.std+1 : c.std; }
+  if (c.dst === 'au'){ var s = nthSun(y,9,1), e = nthSun(y,3,1); return (i >= s || i < e) ? c.std+1 : c.std; }
+  return c.std;
+}
+function sunEvent(y, m, d, lat, lon, offset, rise){
+  var zen = 90.833, N = doyOf(y, m, d) + 1;
+  var lngH = lon / 15;
+  var t = N + ((rise ? 6 : 18) - lngH) / 24;
+  var M = 0.9856 * t - 3.289;
+  var L = norm360(M + 1.916 * Math.sin(M*D2R) + 0.020 * Math.sin(2*M*D2R) + 282.634);
+  var RA = norm360(Math.atan(0.91764 * Math.tan(L*D2R)) * R2D);
+  var Lq = Math.floor(L/90)*90, RAq = Math.floor(RA/90)*90;
+  RA = (RA + (Lq - RAq)) / 15;
+  var sinDec = 0.39782 * Math.sin(L*D2R);
+  var cosDec = Math.cos(Math.asin(sinDec));
+  var cosH = (Math.cos(zen*D2R) - sinDec * Math.sin(lat*D2R)) / (cosDec * Math.cos(lat*D2R));
+  if (cosH > 1 || cosH < -1) return null;                 // 极昼 / 极夜
+  var H = (rise ? 360 - Math.acos(cosH) : Math.acos(cosH)) * R2D / 15;
+  var UT = norm24(H + RA - 0.06571 * t - 6.622 - lngH);
+  return norm24(UT + offset);
+}
+
+var CITY = CITIES[0];
+var CITYDATA = null;
+var needCityRefresh = true;
+
+function refreshCity(){
+  needCityRefresh = false;
+  var off = cityOffset(CITY, new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  var ms = Date.now() + off * 3600000;
+  var cd = new Date(ms);
+  var y = cd.getUTCFullYear(), m = cd.getUTCMonth(), d = cd.getUTCDate();
+  var rise = sunEvent(y, m, d, CITY.lat, CITY.lon, off, true);
+  var set  = sunEvent(y, m, d, CITY.lat, CITY.lon, off, false);
+  CITYDATA = { off:off, y:y, m:m, d:d,
+               localMin: cd.getUTCHours()*60 + cd.getUTCMinutes(),
+               rise:rise, set:set };
+
+  var elT=document.getElementById('cityTime'), elR=document.getElementById('sunRise'),
+      elS=document.getElementById('sunSet'), elL=document.getElementById('dayLen');
+  elT.textContent = pad2(cd.getUTCHours()) + ':' + pad2(cd.getUTCMinutes()) + ' (' + CITY.name + ')';
+  elR.textContent = rise === null ? '极昼/极夜' : fmtClock(rise*3600);
+  elS.textContent = set  === null ? '极昼/极夜' : fmtClock(set *3600);
+  if (rise !== null && set !== null){
+    var len = (set - rise + 24) % 24;
+    elL.textContent = fmtClock(len*3600);
+  } else elL.textContent = '—';
+}
+
+/* ============================================================
+   5. 计时码表状态机（任意顺序点击都不会产生非法状态）
+   ============================================================ */
+var CH = {
+  running:false,      // 是否正在计时
+  base:0,             // 已累计毫秒
+  startAt:0,          // 本次启动时刻（Date.now）
+  frozen:0,           // 暂停时的累计值
+  lastSplit:0,        // 上一圈的分割时刻
+  frozenLap:0,        // 暂停时的本圈时长
+  laps:[]             // [{n, split, seg}]
+};
+function chronoElapsed(){ return CH.running ? CH.base + (Date.now() - CH.startAt) : CH.frozen; }
+function chronoLap(){
+  if (CH.running) return chronoElapsed() - CH.lastSplit;
+  return CH.frozenLap;
+}
+
+var btnStart = document.getElementById('btnStart');
+var btnLap   = document.getElementById('btnLap');
+var btnReset = document.getElementById('btnReset');
+var bigEl    = document.getElementById('chrBig');
+var lapsEl   = document.getElementById('laps');
+var liveEl   = document.getElementById('live');
+
+function renderLaps(){
+  lapsEl.textContent = '';
+  if (!CH.laps.length){ var e = document.createElement('div'); e.className='empty'; e.textContent='尚无计圈记录'; lapsEl.appendChild(e); return; }
+  var fastest = Math.min.apply(null, CH.laps.map(function(l){ return l.seg; }));
+  for (var i = CH.laps.length - 1; i >= 0; i--){
+    var L = CH.laps[i], row = document.createElement('div');
+    row.className = 'lap' + (L.seg === fastest ? ' best' : '');
+    var a = document.createElement('span'); a.textContent = 'LAP ' + L.n;
+    var b = document.createElement('span'); b.textContent = fmtStop(L.seg) + '  /  ' + fmtStop(L.split);
+    row.appendChild(a); row.appendChild(b);
+    lapsEl.appendChild(row);
+  }
+}
+function syncStartBtn(){
+  btnStart.textContent = CH.running ? '暂停' : (CH.base > 0 || CH.frozen > 0 || CH.laps.length ? '继续' : '开始');
+  btnStart.setAttribute('aria-pressed', CH.running ? 'true' : 'false');
+}
+function say(msg){ liveEl.textContent = ''; setTimeout(function(){ liveEl.textContent = msg; }, 30); }
+
+/* 开始 / 暂停 / 继续 —— 幂等 */
+btnStart.addEventListener('click', function(){
+  if (CH.running){
+    CH.frozen = chronoElapsed(); CH.running = false;
+    CH.frozenLap = Math.max(0, CH.frozen - CH.lastSplit);
+    say('计时已暂停，累计 ' + fmtStop(CH.frozen));
+  } else {
+    CH.base = CH.frozen; CH.startAt = Date.now(); CH.running = true;
+    say('计时已开始');
+  }
+  syncStartBtn(); lastPaintKey = -1;
+});
+/* 计圈 —— 未运行或已归零时为安全的空操作 */
+btnLap.addEventListener('click', function(){
+  if (!CH.running){
+    if (!CH.laps.length && chronoElapsed() <= 0) say('计时未运行，计圈无效');
+    else say('计时已暂停，请先继续');
+    return;
+  }
+  var t = chronoElapsed(), seg = t - CH.lastSplit;
+  CH.laps.push({ n: CH.laps.length + 1, split: t, seg: seg });
+  CH.lastSplit = t;
+  renderLaps();
+  say('第 ' + CH.laps.length + ' 圈，本圈 ' + fmtStop(seg));
+  lastPaintKey = -1;
+});
+/* 归零 —— 运行中亦可（先停后清），不会抛错 */
+btnReset.addEventListener('click', function(){
+  var wasRunning = CH.running;
+  CH.running = false; CH.base = 0; CH.frozen = 0; CH.lastSplit = 0; CH.frozenLap = 0; CH.laps = [];
+  renderLaps(); syncStartBtn();
+  say(wasRunning ? '计时已停止并归零' : '已归零');
+  lastPaintKey = -1;
+});
+
+/* 城市按钮 */
+var citiesEl = document.getElementById('cities');
+CITIES.forEach(function(c){
+  var b = document.createElement('button');
+  b.type = 'button'; b.className = 'city'; b.textContent = c.name;
+  b.setAttribute('aria-pressed', c === CITY ? 'true' : 'false');
+  b.addEventListener('click', function(){
+    CITY = c;
+    Array.prototype.forEach.call(citiesEl.children, function(x){ x.setAttribute('aria-pressed','false'); });
+    b.setAttribute('aria-pressed','true');
+    needCityRefresh = true;
+    say('已切换到 ' + c.name);
+  });
+  citiesEl.appendChild(b);
+});
+
+/* ============================================================
+   6. 绘制 —— 通用零件
+   ============================================================ */
+function steelGrad(ctx, x0, y0, x1, y1){
+  var g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0.00,'#6e7681'); g.addColorStop(0.16,'#e9eef4');
+  g.addColorStop(0.34,'#9aa2ad'); g.addColorStop(0.52,'#f4f7fa');
+  g.addColorStop(0.70,'#868e99'); g.addColorStop(0.88,'#d3dae2');
+  g.addColorStop(1.00,'#666d78');
+  return g;
+}
+function subdialBase(ctx, cx, cy, r, tint){
+  circ(ctx, cx, cy, r); ctx.fillStyle = '#0a0d14'; ctx.fill();
+  ctx.save(); circ(ctx, cx, cy, r); ctx.clip();
+  if (ctx.createConicGradient){
+    var cg = ctx.createConicGradient(-Math.PI/2, cx, cy), N = 120;
+    for (var i = 0; i < N; i += 2){
+      cg.addColorStop(i/N, 'rgba(255,255,255,0.035)');
+      cg.addColorStop((i+1)/N, 'rgba(0,0,0,0.055)');
+    }
+    cg.addColorStop(1, 'rgba(255,255,255,0.035)');
+    ctx.fillStyle = cg; ctx.fillRect(cx-r, cy-r, r*2, r*2);
+  }
+  // 细密同心纹（azurage）
+  ctx.strokeStyle = 'rgba(255,255,255,0.045)'; ctx.lineWidth = Math.max(0.4, r*0.008);
+  for (var rr2 = r*0.14; rr2 < r; rr2 += r*0.052){ circ(ctx, cx, cy, rr2); ctx.stroke(); }
+  var vg = ctx.createRadialGradient(cx - r*0.25, cy - r*0.3, r*0.05, cx, cy, r*1.05);
+  vg.addColorStop(0, tint || 'rgba(90,130,200,0.10)'); vg.addColorStop(1, 'rgba(0,0,0,0.62)');
+  ctx.fillStyle = vg; ctx.fillRect(cx-r, cy-r, r*2, r*2);
+  ctx.restore();
+  // 内圈金属边
+  circ(ctx, cx, cy, r - ctx.lineWidth/2);
+  ctx.strokeStyle = steelGrad(ctx, cx-r, cy-r, cx+r, cy+r); ctx.lineWidth = Math.max(1, r*0.035); ctx.stroke();
+  circ(ctx, cx, cy, r - ctx.lineWidth);
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = Math.max(0.5, r*0.012); ctx.stroke();
+}
+function appliedMarker(ctx, cx, cy, ang, ri, ro, hwIn, hwOut, lume){
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+  ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -ro); ctx.lineTo(hwOut, -ri); ctx.lineTo(-hwOut, -ri); ctx.closePath();
+  ctx.fillStyle = steelGrad(ctx, -hwOut, 0, hwOut, 0); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  if (lume){
+    var ir = ro - (ro - ri) * 0.30, ih = hwIn * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(0, -ir); ctx.lineTo(ih, -ri); ctx.lineTo(-ih, -ri); ctx.closePath();
+    var lg = ctx.createLinearGradient(0, -ir, 0, -ri);
+    lg.addColorStop(0, '#e9fbf1'); lg.addColorStop(1, '#a9c9b8');
+    ctx.fillStyle = lg; ctx.fill();
+  }
+  ctx.restore();
+}
+function dauphine(ctx, cx, cy, ang, len, hw, tail, gold){
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+  ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 6; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -len);
+  ctx.lineTo(hw, -len*0.20);
+  ctx.lineTo(hw*0.5, tail*0.25);
+  ctx.lineTo(0, tail);
+  ctx.lineTo(-hw*0.5, tail*0.25);
+  ctx.lineTo(-hw, -len*0.20);
+  ctx.closePath();
+  ctx.fillStyle = gold ? steelGrad(ctx,-hw,0,hw,0) : steelGrad(ctx,-hw,-len*0.4,hw,len*0.4);
+  ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  // 棱面高光
+  ctx.beginPath();
+  ctx.moveTo(0,-len); ctx.lineTo(hw,-len*0.20); ctx.lineTo(hw*0.5,tail*0.25); ctx.lineTo(0,tail); ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fill();
+  // 夜光填充
+  var il = len*0.68, iw = hw*0.40, it = tail*0.30;
+  ctx.beginPath();
+  ctx.moveTo(0,-il); ctx.lineTo(iw,-il*0.22); ctx.lineTo(iw*0.5,it*0.25); ctx.lineTo(0,it); ctx.lineTo(-iw*0.5,it*0.25); ctx.lineTo(-iw,-il*0.22); ctx.closePath();
+  var g2 = ctx.createLinearGradient(0,-il,0,it);
+  g2.addColorStop(0,'#dff5e8'); g2.addColorStop(1,'#93b7a5');
+  ctx.fillStyle = g2; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = Math.max(0.4, hw*0.06); ctx.stroke();
+  ctx.restore();
+}
+function needle(ctx, cx, cy, ang, len, hw, tail, color){
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 2;
+  ctx.beginPath();
+  ctx.moveTo(0,-len); ctx.lineTo(hw,-len*0.35); ctx.lineTo(hw*0.6,tail); ctx.lineTo(-hw*0.6,tail); ctx.lineTo(-hw,-len*0.35); ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  ctx.beginPath(); ctx.arc(0, -len*0.55, hw*0.8, 0, TAU);
+  ctx.fillStyle = '#dff5e8'; ctx.fill();
+  ctx.restore();
+}
+function capStack(ctx, cx, cy, r){
+  circ(ctx, cx, cy, r); ctx.fillStyle = steelGrad(ctx, cx-r, cy-r, cx+r, cy+r); ctx.fill();
+  circ(ctx, cx, cy, r*0.45); ctx.fillStyle = '#12161f'; ctx.fill();
+  circ(ctx, cx, cy, r*0.2); ctx.fillStyle = 'rgba(217,161,95,.85)'; ctx.fill();
+}
+
+/* ============================================================
+   7. 主表盘
+   ============================================================ */
+function drawMain(P, now){
+  var s = GEO.s, R = GEO.R, ctx = mCtx;
+  ctx.clearRect(0,0,s,s);
+
+  // 盘面
+  var base = ctx.createRadialGradient(R*0.72, R*0.62, R*0.04, R, R, R*1.02);
+  base.addColorStop(0,'#222c42'); base.addColorStop(0.45,'#141b28'); base.addColorStop(1,'#05070c');
+  circ(ctx, R, R, R); ctx.fillStyle = base; ctx.fill();
+
+  ctx.save(); circ(ctx, R, R, R); ctx.clip();
+  if (ctx.createConicGradient){
+    var cg = ctx.createConicGradient(-Math.PI/2, R, R), N = 150;
+    for (var i = 0; i < N; i += 2){
+      cg.addColorStop(i/N, 'rgba(255,255,255,0.050)');
+      cg.addColorStop((i+1)/N, 'rgba(0,0,0,0.060)');
+    }
+    cg.addColorStop(1, 'rgba(255,255,255,0.050)');
+    ctx.fillStyle = cg; ctx.fillRect(0,0,s,s);
+  }
+  var vg = ctx.createRadialGradient(R, R, R*0.22, R, R, R);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.62)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,s,s);
+  ctx.restore();
+
+  // 分刻度圈
+  var rOut = R*0.965, rIn = R*0.915;
+  ctx.save();
+  circ(ctx, R, R, rOut + R*0.012); ctx.strokeStyle = steelGrad(ctx, R-rOut, R-rOut, R+rOut, R+rOut);
+  ctx.lineWidth = Math.max(1.2, R*0.012); ctx.stroke();
+  for (var m2 = 0; m2 < 60; m2++){
+    var big = m2 % 5 === 0;
+    var a = m2/60 * TAU - Math.PI/2;
+    var r1 = big ? rIn : rOut - R*0.028;
+    ctx.beginPath();
+    ctx.moveTo(R + Math.cos(a)*r1, R + Math.sin(a)*r1);
+    ctx.lineTo(R + Math.cos(a)*rOut, R + Math.sin(a)*rOut);
+    ctx.strokeStyle = big ? 'rgba(233,238,245,0.92)' : 'rgba(190,200,215,0.5)';
+    ctx.lineWidth = big ? Math.max(1.3, R*0.012) : Math.max(0.6, R*0.005);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 时标（12/3/6/9 亦保留，子表盘径向不重叠）
+  for (var h = 0; h < 12; h++){
+    if (h === 0) continue;
+    appliedMarker(ctx, R, R, h/12*TAU - Math.PI/2, R*0.775, R*0.905, R*0.027, R*0.019, true);
+  }
+  appliedMarker(ctx, R, R, -Math.PI/2 - R*0.021, R*0.775, R*0.905, R*0.026, R*0.017, true);
+  appliedMarker(ctx, R, R, -Math.PI/2 + R*0.021, R*0.775, R*0.905, R*0.026, R*0.017, true);
+
+  // 品牌文字
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#eef2f8';
+  ctx.font = '500 ' + (R*0.083).toFixed(1) + 'px ' + FONT;
+  tracked(ctx, 'LUNARIS', R, R - R*0.135, R*0.020, 'center');
+  ctx.fillStyle = 'rgba(190,200,215,0.78)';
+  ctx.font = '400 ' + (R*0.048).toFixed(1) + 'px ' + FONT;
+  tracked(ctx, 'AUTOMATIC CHRONOGRAPH', R, R + R*0.150, R*0.014, 'center');
+  ctx.fillStyle = 'rgba(217,161,95,0.9)';
+  ctx.font = '500 ' + (R*0.042).toFixed(1) + 'px ' + FONT;
+  tracked(ctx, 'MOONPHASE', R, R - R*0.205, R*0.018, 'center');
+
+  // 日期窗（4:30 位置）
+  drawDateWindow(ctx, R, R, P);
+
+  // 指针
+  var secF = REDUCED ? 0 : P.ms/1000;                 // 减弱动态时为跳秒
+  var secA = (P.s + secF) / 60 * TAU;
+  var minA = (P.m + (P.s + secF)/60) / 60 * TAU;
+  var hrA  = ((P.h % 12) + P.m/60 + (P.s + secF)/3600) / 12 * TAU;
+
+  dauphine(ctx, R, R, hrA, R*0.44, R*0.034, R*0.10, false);
+  dauphine(ctx, R, R, minA, R*0.665, R*0.026, R*0.115, false);
+
+  // 中央扫秒
+  ctx.save(); ctx.translate(R, R); ctx.rotate(secA);
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 5; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#e0a256';
+  ctx.fillRect(-R*0.0075, -R*0.80, R*0.015, R*1.00);
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  circ(ctx, 0, R*0.155, R*0.036); ctx.fillStyle = '#e0a256'; ctx.fill();
+  circ(ctx, 0, -R*0.62, R*0.022); ctx.fillStyle = '#dff5e8'; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.fillRect(-R*0.0075, -R*0.80, R*0.006, R*1.00);
+  ctx.restore();
+
+  capStack(ctx, R, R, R*0.055);
+}
+
+function drawDateWindow(ctx, R, R2, P){
+  var cx = R + Math.cos(Math.PI*0.75) * R*0.815;
+  var cy = R + Math.sin(Math.PI*0.75) * R*0.815;
+  var w = R*0.152, h = R*0.108;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.PI/4);
+  ctx.shadowColor = 'rgba(0,0,0,.75)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+  rr(ctx, -w/2, -h/2, w, h, h*0.16);
+  ctx.fillStyle = steelGrad(ctx, -w/2, -h/2, w/2, h/2); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  rr(ctx, -w/2 + h*0.13, -h/2 + h*0.13, w - h*0.26, h - h*0.26, h*0.08);
+  ctx.fillStyle = '#f2f0e9'; ctx.fill();
+  var days = new Date(P.year, P.month, 0).getDate();   // 正确处理大小月
+  ctx.fillStyle = '#161a22';
+  ctx.font = '500 ' + (h*0.62).toFixed(1) + 'px ' + FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(P.date), 0, h*0.03);
+  ctx.restore();
+}
+
+/* ============================================================
+   8. 子表盘
+   ============================================================ */
+function drawMoon(o, mp){
+  var ctx = o.ctx, cx = o.cx, cy = o.cy, r = o.r;
+  ctx.clearRect(0,0,r*2,r*2);
+  subdialBase(ctx, cx, cy, r, 'rgba(90,120,190,0.14)');
+
+  // 月龄环
+  var ringR = r*0.86;
+  for (var i = 0; i < 30; i++){
+    var a = i/30 * TAU - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a)*(ringR - r*0.06), cy + Math.sin(a)*(ringR - r*0.06));
+    ctx.lineTo(cx + Math.cos(a)*ringR, cy + Math.sin(a)*ringR);
+    ctx.strokeStyle = 'rgba(200,210,225,0.42)';
+    ctx.lineWidth = Math.max(0.5, r*0.012); ctx.stroke();
+  }
+  // 月龄指示三角
+  var pa = mp.phase * TAU - Math.PI/2;
+  ctx.save(); ctx.translate(cx + Math.cos(pa)*ringR, cy + Math.sin(pa)*ringR); ctx.rotate(pa + Math.PI/2);
+  ctx.beginPath(); ctx.moveTo(0, -r*0.055); ctx.lineTo(r*0.05, r*0.03); ctx.lineTo(-r*0.05, r*0.03); ctx.closePath();
+  ctx.fillStyle = '#e0a256'; ctx.fill(); ctx.restore();
+
+  // 月面
+  var mr = r*0.60, px = cx, py = cy - r*0.04;
+  if (!REDUCED){
+    var glow = ctx.createRadialGradient(px, py, mr*0.85, px, py, mr*1.55);
+    glow.addColorStop(0,'rgba(190,215,255,0.16)'); glow.addColorStop(1,'rgba(190,215,255,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(px, py, mr*1.55, 0, TAU); ctx.fill();
+  }
+  circ(ctx, px, py, mr); ctx.fillStyle = '#05070c'; ctx.fill();
+
+  ctx.save();
+  ctx.translate(px, py);
+  if (!mp.waxing) ctx.scale(-1, 1);
+  var pth = moonPath(mp.phase, mr, true);
+  var mg = ctx.createLinearGradient(-mr, -mr, mr, mr);
+  mg.addColorStop(0,'#ffffff'); mg.addColorStop(0.45,'#e6ecf5'); mg.addColorStop(1,'#b9c4d4');
+  ctx.fillStyle = mg; ctx.fill(pth);
+  // 环形山
+  ctx.save(); ctx.clip(pth);
+  CRATERS.forEach(function(c){
+    ctx.beginPath(); ctx.arc(c[0]*mr, c[1]*mr, c[2]*mr, 0, TAU);
+    ctx.fillStyle = 'rgba(120,134,155,0.30)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(c[0]*mr - c[2]*mr*0.22, c[1]*mr - c[2]*mr*0.22, c[2]*mr*0.62, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill();
+  });
+  ctx.restore();
+  // 边缘立体感
+  ctx.save(); ctx.clip(pth);
+  var sh = ctx.createRadialGradient(-mr*0.3, -mr*0.3, mr*0.2, 0, 0, mr*1.25);
+  sh.addColorStop(0,'rgba(255,255,255,0)'); sh.addColorStop(1,'rgba(40,55,85,0.45)');
+  ctx.fillStyle = sh; ctx.fillRect(-mr,-mr,mr*2,mr*2);
+  ctx.restore();
+  ctx.restore();
+
+  circ(ctx, px, py, mr); ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = Math.max(0.6, r*0.014); ctx.stroke();
+
+  ctx.fillStyle = 'rgba(200,210,225,0.72)';
+  ctx.font = '500 ' + (r*0.155).toFixed(1) + 'px ' + FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  tracked(ctx, MOON_NAMES[Math.round(mp.phase*8)%8], cx, cy + r*0.82, r*0.03, 'center');
+}
+
+function drawChrono30(o){
+  var ctx = o.ctx, cx = o.cx, cy = o.cy, r = o.r;
+  ctx.clearRect(0,0,r*2,r*2);
+  subdialBase(ctx, cx, cy, r, 'rgba(190,140,90,0.09)');
+
+  var R2 = r*0.84;
+  for (var i = 0; i < 30; i++){
+    var a = i/30 * TAU - Math.PI/2, big = i % 5 === 0;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a)*(big ? R2*0.80 : R2*0.90), cy + Math.sin(a)*(big ? R2*0.80 : R2*0.90));
+    ctx.lineTo(cx + Math.cos(a)*R2, cy + Math.sin(a)*R2);
+    ctx.strokeStyle = big ? 'rgba(235,240,248,0.92)' : 'rgba(190,200,215,0.42)';
+    ctx.lineWidth = big ? Math.max(1, r*0.02) : Math.max(0.5, r*0.009); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(205,214,228,0.8)';
+  ctx.font = '500 ' + (r*0.19).toFixed(1) + 'px ' + FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  [[10,1],[20,2],[30,3]].forEach(function(p){
+    var a = p[0]/30 * TAU - Math.PI/2;
+    ctx.fillText(String(p[0]), cx + Math.cos(a)*R2*0.58, cy + Math.sin(a)*R2*0.58);
+  });
+  ctx.fillStyle = 'rgba(150,162,180,0.75)';
+  ctx.font = '400 ' + (r*0.135).toFixed(1) + 'px ' + FONT;
+  tracked(ctx, 'MIN', cx, cy + r*0.46, r*0.03, 'center');
+
+  var mins = (chronoElapsed()/60000) % 30;
+  needle(ctx, cx, cy, (mins/30)*TAU, r*0.74, r*0.045, r*0.16, '#e0a256');
+  capStack(ctx, cx, cy, r*0.115);
+}
+
+function drawChrono9(o){
+  var ctx = o.ctx, cx = o.cx, cy = o.cy, r = o.r;
+  ctx.clearRect(0,0,r*2,r*2);
+  subdialBase(ctx, cx, cy, r, 'rgba(120,150,210,0.09)');
+
+  var R2 = r*0.84;
+  for (var i = 0; i < 60; i++){
+    var a = i/60 * TAU - Math.PI/2, big = i % 5 === 0;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a)*(big ? R2*0.78 : R2*0.90), cy + Math.sin(a)*(big ? R2*0.78 : R2*0.90));
+    ctx.lineTo(cx + Math.cos(a)*R2, cy + Math.sin(a)*R2);
+    ctx.strokeStyle = big ? 'rgba(235,240,248,0.92)' : 'rgba(190,200,215,0.40)';
+    ctx.lineWidth = big ? Math.max(1, r*0.02) : Math.max(0.5, r*0.008); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(205,214,228,0.8)';
+  ctx.font = '500 ' + (r*0.175).toFixed(1) + 'px ' + FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  [[15,1],[30,2],[45,3]].forEach(function(p){
+    var a = p[0]/60 * TAU - Math.PI/2;
+    ctx.fillText(String(p[0]), cx + Math.cos(a)*R2*0.56, cy + Math.sin(a)*R2*0.56);
+  });
+  ctx.fillStyle = 'rgba(150,162,180,0.7)';
+  ctx.font = '400 ' + (r*0.125).toFixed(1) + 'px ' + FONT;
+  tracked(ctx, CH.laps.length ? 'LAP' : 'SEC', cx, cy + r*0.44, r*0.03, 'center');
+
+  var lapSec = (chronoLap()/1000) % 60;
+  needle(ctx, cx, cy, (lapSec/60)*TAU, r*0.74, r*0.038, r*0.16, '#e0a256');
+  capStack(ctx, cx, cy, r*0.115);
+}
+
+function drawDayNight(o){
+  var ctx = o.ctx, cx = o.cx, cy = o.cy, r = o.r;
+  ctx.clearRect(0,0,r*2,r*2);
+  subdialBase(ctx, cx, cy, r, 'rgba(90,130,190,0.10)');
+
+  if (!CITYDATA) return;
+  var rise = CITYDATA.rise, set = CITYDATA.set;
+  var ringR = r*0.82;
+
+  // 夜弧
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringR, -Math.PI/2, -Math.PI/2 + TAU);
+  ctx.strokeStyle = 'rgba(52,84,150,0.55)'; ctx.lineWidth = Math.max(2, r*0.085); ctx.stroke();
+
+  if (rise !== null && set !== null){
+    var a0 = rise/24 * TAU - Math.PI/2, a1 = set/24 * TAU - Math.PI/2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, a0, a1);
+    var dg = ctx.createLinearGradient(cx-ringR, cy-ringR, cx+ringR, cy+ringR);
+    dg.addColorStop(0,'#f0c274'); dg.addColorStop(0.5,'#e8a95a'); dg.addColorStop(1,'#c9803f');
+    ctx.strokeStyle = dg; ctx.lineWidth = Math.max(2, r*0.085); ctx.stroke();
+  }
+
+  // 24 小时刻度
+  ctx.fillStyle = 'rgba(200,210,225,0.62)';
+  ctx.font = '400 ' + (r*0.15).toFixed(1) + 'px ' + FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  [[0,'00'],[6,'06'],[12,'12'],[18,'18']].forEach(function(p){
+    var a = p[0]/24 * TAU - Math.PI/2, rr3 = ringR - r*0.155;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a)*ringR, cy + Math.sin(a)*ringR);
+    ctx.lineTo(cx + Math.cos(a)*(ringR - r*0.07), cy + Math.sin(a)*(ringR - r*0.07));
+    ctx.strokeStyle = 'rgba(220,228,240,.55)'; ctx.lineWidth = Math.max(0.5, r*0.012); ctx.stroke();
+    ctx.fillText(p[1], cx + Math.cos(a)*rr3, cy + Math.sin(a)*rr3);
+  });
+
+  // 当前时刻指针
+  var mins = CITYDATA.localMin + (Date.now()/1000 % 60)/60;
+  var ca = mins/1440 * TAU - Math.PI/2;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ca);
+  ctx.beginPath();
+  ctx.moveTo(0, -ringR - r*0.055); ctx.lineTo(r*0.055, -ringR*0.55);
+  ctx.lineTo(0, -ringR*0.48); ctx.lineTo(-r*0.055, -ringR*0.55); ctx.closePath();
+  ctx.fillStyle = '#f2f6fb'; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = Math.max(0.4, r*0.008); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -ringR, r*0.045, 0, TAU);
+  ctx.fillStyle = '#e0a256'; ctx.fill();
+  ctx.restore();
+
+  // 中心：昼夜图标 + 城市码
+  var isDay = (rise !== null && set !== null)
+    ? (((mins/60) >= rise) && ((mins/60) < set))
+    : (((mins/60) >= 6) && ((mins/60) < 18));
+  var ir = r*0.30;
+  ctx.save(); ctx.translate(cx, cy - r*0.10);
+  if (isDay){
+    var sg = ctx.createRadialGradient(0,0,ir*0.15,0,0,ir);
+    sg.addColorStop(0,'#ffe6a8'); sg.addColorStop(1,'#e8a94f');
+    ctx.beginPath(); ctx.arc(0,0,ir*0.62,0,TAU); ctx.fillStyle = sg; ctx.fill();
+    ctx.strokeStyle = 'rgba(240,200,120,.85)'; ctx.lineWidth = Math.max(1, r*0.018);
+    for (var k = 0; k < 8; k++){
+      var aa = k/8 * TAU;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(aa)*ir*0.82, Math.sin(aa)*ir*0.82);
+      ctx.lineTo(Math.cos(aa)*ir*1.08, Math.sin(aa)*ir*1.08);
+      ctx.stroke();
+    }
+  } else {
+    ctx.beginPath(); ctx.arc(0,0,ir*0.70,0,TAU);
+    ctx.fillStyle = '#cfd9ea'; ctx.fill();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath(); ctx.arc(ir*0.34, -ir*0.24, ir*0.66, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(214,222,236,0.88)';
+  ctx.font = '500 ' + (r*0.155).toFixed(1) + 'px ' + FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  tracked(ctx, CITY.code, cx, cy + r*0.44, r*0.035, 'center');
+
+  capStack(ctx, cx, cy, r*0.10);
+}
+
+/* ============================================================
+   9. ARIA
+   ============================================================ */
+var WD = ['日','一','二','三','四','五','六'];
+function updateAria(P, mp){
+  var t = pad2(P.h)+':'+pad2(P.m)+':'+pad2(P.s);
+  SUB.moon.el.setAttribute('aria-label',
+    '月相表盘：' + MOON_NAMES[Math.round(mp.phase*8)%8] + '，月龄 ' + mp.age.toFixed(1) + ' 天，照亮 ' + Math.round(mp.illum*100) + '%');
+  SUB.c30.el.setAttribute('aria-label', '计时码表三十分表盘：累计 ' + fmtStop(chronoElapsed()) + '，本圈 ' + fmtStop(chronoLap()));
+  SUB.c9.el.setAttribute('aria-label',  '计时码表秒表盘：' + (CH.laps.length ? '计圈中，' : '') + '本圈 ' + fmtStop(chronoLap()) + '，共 ' + CH.laps.length + ' 圈');
+  if (CITYDATA){
+    var lh = Math.floor(CITYDATA.localMin/60), lm = CITYDATA.localMin%60;
+    var rise = CITYDATA.rise, set = CITYDATA.set;
+    var isDay = (rise !== null && set !== null) ? (((CITYDATA.localMin/60) >= rise) && ((CITYDATA.localMin/60) < set))
+                                                : (((CITYDATA.localMin/60) >= 6) && ((CITYDATA.localMin/60) < 18));
+    SUB.dn.el.setAttribute('aria-label',
+      '昼夜与日出日落表盘：' + CITY.name + '，当地时间 ' + pad2(lh) + ':' + pad2(lm) + '，' + (isDay ? '白天' : '夜晚') +
+      '，日出 ' + (rise === null ? '无' : fmtClock(rise*3600)) + '，日落 ' + (set === null ? '无' : fmtClock(set*3600)));
+  }
+  dialEl.setAttribute('aria-label',
+    '腕表主表盘：' + t + '，' + P.year + ' 年 ' + P.month + ' 月 ' + P.date + ' 日 星期' + WD[P.dow] +
+    '，计时码表' + (CH.running ? '运行中' : '已停止'));
+  bigEl.setAttribute('aria-label', '计时器读数 ' + fmtStop(chronoElapsed()));
+  var mi = document.getElementById('moonInfo');
+  mi.textContent = MOON_NAMES[Math.round(mp.phase*8)%8] + ' · ' + mp.age.toFixed(1) + ' 天';
+}
+
+/* ============================================================
+   10. 主循环 —— rAF 驱动；切回标签页立即重绘校准
+   ============================================================ */
+var lastPaintKey = -1;
+var lastMinute = -1;
+
+function frame(){
+  var now = Date.now();
+  var P = nowParts();
+
+  if (needCityRefresh || Math.floor(now/60000) !== lastMinute){
+    lastMinute = Math.floor(now/60000);
+    refreshCity();
+  }
+
+  var key = REDUCED ? Math.floor(now/1000) : (P.ms % 1000);
+  if (key !== lastPaintKey){
+    lastPaintKey = key;
+    var mp = moonPhase(P.d);
+    drawMain(P, now);
+    drawMoon(SUB.moon, mp);
+    drawChrono30(SUB.c30);
+    drawChrono9(SUB.c9);
+    drawDayNight(SUB.dn);
+
+    var e = chronoElapsed();
+    bigEl.innerHTML = fmtStop(e).replace(/\.(\d{2})$/, '<small>.$1</small>');
+    updateAria(P, mp);
+  }
+  requestAnimationFrame(frame);
+}
+
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden){ lastPaintKey = -1; needCityRefresh = true; frame_sync(); }
+});
+function frame_sync(){
+  var now = Date.now(), P = nowParts(), mp = moonPhase(P.d);
+  refreshCity();
+  drawMain(P, now);
+  drawMoon(SUB.moon, mp);
+  drawChrono30(SUB.c30);
+  drawChrono9(SUB.c9);
+  drawDayNight(SUB.dn);
+  var e = chronoElapsed();
+  bigEl.innerHTML = fmtStop(e).replace(/\.(\d{2})$/, '<small>.$1</small>');
+  updateAria(P, mp);
+  lastPaintKey = -1;
+}
+
+layout();
+renderLaps();
+syncStartBtn();
+refreshCity();
+frame();
+
+})();
+</script>
+</body>
+</html>

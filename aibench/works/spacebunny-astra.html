@@ -766,7 +766,7 @@ function uploadShape(slot){
 }
 
 function refreshShapeBuffers(){
-  // 过渡期间 blendFrom 可能仍是上一个形态，各自用各��的裁剪坐标
+  // 过渡期间 blendFrom 可能仍是上一个形态，各自使用各自的裁剪坐标
   if(SHAPES[activeShape]){
     toClip(SHAPES[activeShape], innerWidth, innerHeight, clip0);
     gl.bindBuffer(gl.ARRAY_BUFFER, bufT0); gl.bufferSubData(gl.ARRAY_BUFFER, 0, clip0);

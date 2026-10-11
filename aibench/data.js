@@ -34,6 +34,14 @@ window.AIBENCH = {
       "prompt": "请你做一个3D迷宫"
     },
     {
+      "id": "topic5",
+      "name": "敦煌飞天粒子画",
+      "en": "敦煌飞天粒子画",
+      "sub": "未分类",
+      "grad": "radial-gradient(circle at 50% 30%, #16394a 0%, #0b1e28 55%, #040a0e 100%)",
+      "prompt": "请你做一个敦煌飞天粒子画\n\n网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。\n\n用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。"
+    },
+    {
       "id": "qingming",
       "name": "赛博朋克清明上河图",
       "en": "CYBERPUNK SCROLL",
@@ -116,6 +124,24 @@ window.AIBENCH = {
       }
     },
     {
+      "slug": "spacebunny",
+      "name": "Space bunny",
+      "works": {
+        "billiards": "spacebunny-billiards.html",
+        "maze": "spacebunny-maze.html",
+        "watch": "spacebunny-watch.html",
+        "qingming": "spacebunny-qingming.html",
+        "astra": "spacebunny-astra.html"
+      },
+      "dates": {
+        "billiards": "2026-10-11",
+        "maze": "2026-10-11",
+        "watch": "2026-10-11",
+        "qingming": "2026-10-11",
+        "astra": "2026-10-11"
+      }
+    },
+    {
       "slug": "seed21pro",
       "name": "Seed-2.1 Pro",
       "works": {
@@ -129,18 +155,6 @@ window.AIBENCH = {
         "maze": "2026-08-29",
         "watch": "2026-08-29",
         "qingming": "2026-08-29"
-      }
-    },
-    {
-      "slug": "spacebunny",
-      "name": "Space bunny",
-      "works": {
-        "qingming": "spacebunny-qingming.html",
-        "astra": "spacebunny-astra.html"
-      },
-      "dates": {
-        "qingming": "2026-10-11",
-        "astra": "2026-10-11"
       }
     }
   ]

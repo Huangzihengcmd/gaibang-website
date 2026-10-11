@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>3D 迷宫 · SPACE BUNNY</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#080b12;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    color:#dfe7f5;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #gl{display:block;width:100%;height:100%;cursor:crosshair}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .panel{position:absolute;background:rgba(10,15,26,.62);border:1px solid rgba(120,180,255,.16);
+    border-radius:12px;padding:10px 13px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+
+  #stats{top:16px;left:16px;min-width:158px}
+  #stats .row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;line-height:1.75}
+  #stats .k{font-size:11px;letter-spacing:.14em;color:#7f93b4;text-transform:uppercase}
+  #stats .v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:#e8f0ff}
+  #stats .v small{font-size:11px;color:#7f93b4;font-weight:400;margin-left:2px}
+  #time{color:#57e8c8}
+  #bar{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:8px;overflow:hidden}
+  #bar>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#57e8c8,#7aa8ff);
+    transition:width .3s ease}
+
+  #mapwrap{top:16px;right:16px;padding:9px}
+  #minimap{display:block;border-radius:6px;background:#070a11}
+  #maplabel{font-size:10px;letter-spacing:.14em;color:#7f93b4;text-align:center;margin-top:7px;text-transform:uppercase}
+
+  #tip{bottom:18px;left:50%;transform:translateX(-50%);font-size:12.5px;color:#8ea3c4;
+    letter-spacing:.04em;white-space:nowrap;padding:8px 16px}
+  #tip b{color:#cfe0ff;font-weight:600}
+  #cross{position:absolute;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);opacity:.5}
+  #cross:before,#cross:after{content:"";position:absolute;background:#bcd4ff}
+  #cross:before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%)}
+  #cross:after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%)}
+
+  #toast{top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 26px;font-size:15px;
+    letter-spacing:.06em;opacity:0;transition:opacity .4s}
+
+  /* ---------- 覆盖层 ---------- */
+  #overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 40%,rgba(24,36,60,.86),rgba(4,6,11,.96));
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity .45s}
+  #overlay.hidden{opacity:0;pointer-events:none}
+  .card{width:min(430px,90vw);text-align:center;padding:34px 30px;border-radius:20px;
+    background:linear-gradient(180deg,rgba(20,29,48,.9),rgba(11,16,27,.92));
+    border:1px solid rgba(130,180,255,.18);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .card h1{font-size:29px;font-weight:700;letter-spacing:.03em;
+    background:linear-gradient(92deg,#7ff0d8,#8ab6ff 55%,#c39bff);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .card .sub{font-size:12px;letter-spacing:.3em;color:#6d81a3;text-transform:uppercase;margin-top:8px}
+  .card p{font-size:13.5px;line-height:1.85;color:#a9bcd8;margin:20px 0 6px;text-align:left}
+  .keys{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 22px;justify-content:center}
+  .keys span{font-size:11.5px;padding:5px 11px;border-radius:7px;color:#c4d6f2;
+    background:rgba(120,170,255,.1);border:1px solid rgba(130,180,255,.18)}
+  .keys span b{color:#7ff0d8;font-weight:600}
+  button{pointer-events:auto;font:inherit;font-size:15px;font-weight:600;letter-spacing:.06em;
+    padding:13px 34px;border-radius:11px;border:none;cursor:pointer;color:#06121a;
+    background:linear-gradient(96deg,#6ff0d2,#7fb0ff);transition:transform .15s,box-shadow .15s}
+  button:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(90,190,220,.3)}
+  button.ghost{background:transparent;color:#9db3d4;border:1px solid rgba(130,180,255,.22);
+    font-weight:500;font-size:13px;padding:10px 20px}
+  .btnrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  #winStats{display:none;font-size:13px;color:#9db3d4;margin:16px 0 4px;line-height:2}
+  #winStats b{color:#7ff0d8;font-variant-numeric:tabular-nums;font-size:15px}
+  #err{display:none;padding:16px;font-size:13px;color:#ffb4a8;line-height:1.8}
+  @media (max-width:520px){
+    #mapwrap{padding:6px}#minimap{width:104px;height:104px}
+    .card h1{font-size:24px}.card{padding:26px 20px}#tip{font-size:11px}
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="hud">
+  <div class="panel" id="stats">
+    <div class="row"><span class="k">时间</span><span class="v" id="time">00:00</span></div>
+    <div class="row"><span class="k">步数</span><span class="v" id="steps">0<small>步</small></span></div>
+    <div class="row"><span class="k">已探索</span><span class="v" id="pct">0<small>%</small></span></div>
+    <div id="bar"><i id="barfill"></i></div>
+  </div>
+
+  <div class="panel" id="mapwrap">
+    <canvas id="minimap" width="176" height="176"></canvas>
+    <div id="maplabel">小地图 · M 切换</div>
+  </div>
+
+  <div id="cross"></div>
+  <div class="panel" id="toast">发现通道</div>
+  <div class="panel" id="tip"><b>WASD</b> 移动 · <b>鼠标</b> 转视角 · <b>← →</b> 转身 · <b>R</b> 重开 · <b>H</b> 帮助</div>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <h1 id="ovTitle">3D 迷宫</h1>
+    <div class="sub" id="ovSub">Space Bunny Lab</div>
+    <div id="ovBody">
+      <p>你被丢进一座会呼吸的金属迷宫。走到发光的青色出口，全靠你自己。墙会挡住视线，所以别怕走错——每个死胡同都是信息。</p>
+      <div class="keys">
+        <span><b>W A S D</b> 移动</span><span><b>鼠标</b> 转视角</span>
+        <span><b>← →</b> 转身</span><span><b>M</b> 小地图</span><span><b>R</b> 重开</span>
+      </div>
+    </div>
+    <div id="winStats"></div>
+    <div id="err"></div>
+    <div class="btnrow">
+      <button id="btnStart">进入迷宫</button>
+      <button id="btnNew" class="ghost">换个迷宫</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   0. WebGL 初始化
+   ============================================================ */
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl', {antialias:true, alpha:false}) ||
+           canvas.getContext('experimental-webgl');
+function fatal(msg){
+  const e=document.getElementById('err'); e.style.display='block';
+  e.innerHTML='⚠️ '+msg+'<br>请换用 Chrome / Edge / Firefox 打开，并确认已启用硬件加速。';
+  document.getElementById('btnStart').style.display='none';
+}
+if(!gl){ fatal('当前浏览器不支持 WebGL。'); return; }
+
+const VS = `
+attribute vec3 aPos;
+attribute vec3 aNormal;
+attribute vec3 aColor;
+attribute float aEmis;
+uniform mat4 uMVP;
+varying vec3 vColor; varying vec3 vN; varying vec3 vW; varying float vEmis;
+void main(){ vColor=aColor; vN=aNormal; vW=aPos; vEmis=aEmis;
+  gl_Position = uMVP * vec4(aPos,1.0); }`;
+
+const FS = `
+precision mediump float;
+varying vec3 vColor; varying vec3 vN; varying vec3 vW; varying float vEmis;
+uniform vec3 uCam; uniform vec3 uFwd; uniform float uTime;
+void main(){
+  vec3 n = normalize(vN);
+  vec3 d = uCam - vW;
+  float dist = length(d);
+  vec3 L = d / max(dist, 0.001);
+  float att = 1.0 / (1.0 + dist*dist*0.11);
+  float diff = max(dot(n, L), 0.0);
+  float spot = smoothstep(0.52, 0.95, dot(-L, uFwd));
+  float amb  = 0.20 + 0.16*max(n.y, 0.0);
+  vec3 col = vColor * (amb + 1.25*diff*att*(0.40 + 0.60*spot));
+
+  // 墙面网格线（每 1 单位），帮助感知空间
+  vec2 uv = abs(n.y) > 0.5 ? vW.xz : (abs(n.x) > 0.5 ? vW.zy : vW.xy);
+  vec2 fr = abs(fract(uv) - 0.5);
+  col *= 1.0 - 0.34*smoothstep(0.455, 0.5, max(fr.x, fr.y));
+
+  col += vColor * vEmis * (0.75 + 0.35*sin(uTime*2.6));
+
+  float fog = 1.0 - exp(-dist*0.082);
+  col = mix(col, vec3(0.035,0.05,0.085), fog*0.96);
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+let prog;
+try{
+  prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+}catch(err){ fatal('着色器编译失败：'+err.message); return; }
+gl.useProgram(prog);
+
+const A = {
+  pos  : gl.getAttribLocation(prog,'aPos'),
+  nrm  : gl.getAttribLocation(prog,'aNormal'),
+  col  : gl.getAttribLocation(prog,'aColor'),
+  emis : gl.getAttribLocation(prog,'aEmis')
+};
+const U = {
+  mvp  : gl.getUniformLocation(prog,'uMVP'),
+  cam  : gl.getUniformLocation(prog,'uCam'),
+  fwd  : gl.getUniformLocation(prog,'uFwd'),
+  time : gl.getUniformLocation(prog,'uTime')
+};
+
+/* ============================================================
+   1. 矩阵 / 向量小工具（列主序）
+   ============================================================ */
+function perspective(out, fovy, aspect, near, far){
+  const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
+  out[0]=f/aspect; out[1]=0; out[2]=0;     out[3]=0;
+  out[4]=0;         out[5]=f; out[6]=0;     out[7]=0;
+  out[8]=0;         out[9]=0; out[10]=(far+near)*nf; out[11]=-1;
+  out[12]=0;        out[13]=0;out[14]=2*far*near*nf; out[15]=0;
+  return out;
+}
+function mul(out, a, b){ // out = a * b
+  for(let c=0;c<4;c++){
+    const b0=b[c*4], b1=b[c*4+1], b2=b[c*4+2], b3=b[c*4+3];
+    out[c*4  ]=a[0]*b0+a[4]*b1+a[8] *b2+a[12]*b3;
+    out[c*4+1]=a[1]*b0+a[5]*b1+a[9] *b2+a[13]*b3;
+    out[c*4+2]=a[2]*b0+a[6]*b1+a[10]*b2+a[14]*b3;
+    out[c*4+3]=a[3]*b0+a[7]*b1+a[11]*b2+a[15]*b3;
+  }
+  return out;
+}
+// 依据相机朝向构造 view 矩阵（右手系，Y 向上，列主序存储）
+function buildView(out, eye, f){
+  // right = normalize(cross(f, worldUp)), worldUp = (0,1,0)
+  const rx = -f[2], rz = f[0];
+  const rl = Math.hypot(rx, rz) || 1;
+  const R0 = rx/rl, R2 = rz/rl;              // right = (R0, 0, R2)
+  // up = cross(right, f)
+  const U0 = -R2*f[1], U1 = rl, U2 = R0*f[1];
+  // V 的行分别是 right / up / -forward，平移项为 -dot(axis, eye)
+  out[0]=R0;  out[1]=0;      out[2]=R2;      out[3]=0;
+  out[4]=U0;  out[5]=U1;     out[6]=U2;      out[7]=0;
+  out[8]=-f[0];out[9]=-f[1]; out[10]=-f[2];  out[11]=0;
+  out[12]=-(R0*eye[0] + R2*eye[2]);
+  out[13]=-(U0*eye[0] + U1*eye[1] + U2*eye[2]);
+  out[14]= (f[0]*eye[0] + f[1]*eye[1] + f[2]*eye[2]);
+  out[15]=1;
+  return out;
+}
+
+/* ============================================================
+   2. 迷宫生成（递归回溯）+ BFS 求最远点
+   ============================================================ */
+const W = 13, H = 13;                 // 13 x 13 格
+const CELL = 4.2;                     // 每格边长（世界单位）
+const WALL_H = 3.5;                   // 墙高
+const R = 0.48;                       // 玩家碰撞半径
+const N=1, E=2, S=4, Wd=8;
+let walls;        // Uint8Array bitmask
+let visited;      // Uint8Array 是否到过
+let dist;         // Int16Array BFS 距离
+let startI, goalI, goalIdx;
+
+function idx(gx,gz){ return gz*W + gx; }
+
+function generate(){
+  walls = new Uint8Array(W*H).fill(N|E|S|Wd);
+  const seen = new Uint8Array(W*H);
+  const stack = [0];
+  seen[0] = 1;
+  // 方向表：[当前格墙位, dx, dz, 邻居格对应墙位（必须是相反方向）]
+  const dir = [[N,0,-1,S],[E,1,0,Wd],[S,0,1,N],[Wd,-1,0,E]];
+  while(stack.length){
+    const cur = stack[stack.length-1];
+    const cx = cur % W, cz = (cur / W) | 0;
+    const opts = [];
+    for(const d of dir){
+      const nx = cx + d[1], nz = cz + d[2];
+      if(nx<0||nz<0||nx>=W||nz>=H) continue;
+      const ni = idx(nx,nz);
+      if(seen[ni]) continue;
+      opts.push([ni, walls[cur] & ~d[0], walls[ni] & ~d[3]]); // 两侧同时打通：cur 此面 + 邻居反面
+    }
+    if(!opts.length){ stack.pop(); continue; }
+    const pick = opts[(Math.random()*opts.length)|0];
+    walls[cur] = pick[1];
+    walls[pick[0]] = pick[2];
+    seen[pick[0]] = 1;
+    stack.push(pick[0]);
+  }
+  startI = 0;
+  // BFS 找最远格作为出口
+  dist = new Int16Array(W*H).fill(-1);
+  dist[0] = 0;
+  const q = [0];
+  let far = 0;
+  for(let h=0; h<q.length; h++){
+    const c = q[h], cx = c%W, cz = (c/W)|0;
+    if(dist[c] > dist[far]) far = c;
+    if(cz>0     && !(walls[c]&N) && dist[idx(cx,cz-1)]<0){ dist[idx(cx,cz-1)]=dist[c]+1; q.push(idx(cx,cz-1)); }
+    if(cz<H-1   && !(walls[c]&S) && dist[idx(cx,cz+1)]<0){ dist[idx(cx,cz+1)]=dist[c]+1; q.push(idx(cx,cz+1)); }
+    if(cx<W-1   && !(walls[c]&E) && dist[idx(cx+1,cz)]<0){ dist[idx(cx+1,cz)]=dist[c]+1; q.push(idx(cx+1,cz)); }
+    if(cx>0     && !(walls[c]&Wd)&& dist[idx(cx-1,cz)]<0){ dist[idx(cx-1,cz)]=dist[c]+1; q.push(idx(cx-1,cz)); }
+  }
+  goalIdx = far;
+  goalI = [far%W, (far/W)|0];
+  visited = new Uint8Array(W*H);
+}
+
+/* ============================================================
+   3. 网格构建（只生成迷宫内部可见面）
+   ============================================================ */
+let vbo=null, vcount=0;
+
+function hex(h){
+  return [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
+}
+const C_WALL_LO = hex('#1c2436'), C_WALL_HI = hex('#46597a');
+const C_FLOOR  = hex('#1a2130'), C_FLOOR2 = hex('#1e2739');
+const C_CEIL   = hex('#11161f'), C_CEIL2  = hex('#161d29');
+const C_GOAL   = hex('#5df5d8');
+
+function buildMesh(){
+  const v = [];
+  const quad = (a,b,c,d, n, colB, colT, emis) => {
+    // 两个三角形
+    const P = [a,b,c, a,c,d];
+    for(let i=0;i<6;i++){
+      const p = P[i];
+      const col = (p[1] > 1.05) ? colT : colB;
+      v.push(p[0],p[1],p[2], n[0],n[1],n[2], col[0],col[1],col[2], emis||0);
+    }
+  };
+  const box4 = (x0,x1,z0,z1,y0,y1, n, colB,colT,emis) =>
+    quad([x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0], n,colB,colT,emis);
+
+  for(let gz=0; gz<H; gz++){
+    for(let gx=0; gx<W; gx++){
+      const i = idx(gx,gz);
+      const x0 = gx*CELL, x1 = x0+CELL, z0 = gz*CELL, z1 = z0+CELL;
+      // 地面
+      const fc = ((gx+gz)&1) ? C_FLOOR : C_FLOOR2;
+      quad([x0,0,z1],[x0,0,z0],[x1,0,z0],[x1,0,z1], [0,1,0], fc, fc, 0);
+      // 顶棚
+      const cc = ((gx+gz)&1) ? C_CEIL : C_CEIL2;
+      quad([x0,WALL_H,z0],[x0,WALL_H,z1],[x1,WALL_H,z1],[x1,WALL_H,z0], [0,-1,0], cc, cc, 0);
+
+      // 北墙（法线 +Z，面向格内）
+      if(walls[i]&N){
+        box4(x0,x1,z0,z0, 0,WALL_H, [0,0,1], C_WALL_LO, C_WALL_HI, 0);
+      }
+      // 南墙（法线 -Z）
+      if(walls[i]&S){
+        box4(x0,x1,z1,z1, 0,WALL_H, [0,0,-1], C_WALL_LO, C_WALL_HI, 0);
+      }
+      // 西墙（法线 +X）
+      if(walls[i]&Wd){
+        box4(x0,x0,z0,z1, 0,WALL_H, [1,0,0], C_WALL_LO, C_WALL_HI, 0);
+      }
+      // 东墙（法线 -X）
+      if(walls[i]&E){
+        box4(x1,x1,z0,z1, 0,WALL_H, [-1,0,0], C_WALL_LO, C_WALL_HI, 0);
+      }
+    }
+  }
+
+  // 出口：终点格子中央交叉双面发光板 + 地面光环
+  const gx = goalI[0], gz = goalI[1];
+  const cx = gx*CELL + CELL/2, cz = gz*CELL + CELL/2;
+  const HW = 1.1, HH = 1.6, BY = 0.5;
+  // 沿 Z 轴的发光板（法线 +X）
+  quad([cx,BY,cz-HW],[cx,BY+HH,cz-HW],[cx,BY+HH,cz+HW],[cx,BY,cz+HW],
+       [1,0,0], C_GOAL, C_GOAL, 0.9);
+  // 沿 X 轴的发光板（法线 +Z）
+  quad([cx-HW,BY,cz],[cx-HW,BY+HH,cz],[cx+HW,BY+HH,cz],[cx+HW,BY,cz],
+       [0,0,1], C_GOAL, C_GOAL, 0.9);
+  // 地面光环（四条细边）
+  const GR = CELL/2 - 0.32, t = 0.08;
+  const ring = (ax,az,bx,bz) => quad(
+    [cx+ax,0.03,cz+az],[cx+ax,0.03,cz+az+t],[cx+bx,0.03,cz+bz+t],[cx+bx,0.03,cz+bz],
+    [0,1,0], C_GOAL, C_GOAL, 0.5);
+  ring(-GR,-GR, GR,-GR); ring(GR,GR, -GR,GR);
+  ring(-GR, GR, -GR,-GR); ring(GR,-GR, GR, GR);
+
+  // 起点：橙色发光边框
+  const sx = CELL/2, t2 = 0.06, R2 = CELL/2 - 0.22;
+  const mark = hex('#ffa14d');
+  const mk = (ax,az,bx,bz) => quad(
+    [sx+ax,0.025,sz+az],[sx+ax,0.025,sz+az+t2],[sx+bx,0.025,sz+bz+t2],[sx+bx,0.025,sz+bz],
+    [0,1,0], mark, mark, 0.35);
+  const sz = CELL/2;
+  mk(-R2,-R2, R2,-R2); mk(R2,R2, -R2,R2);
+  mk(-R2, R2, -R2,-R2); mk(R2,-R2, R2, R2);
+
+  const data = new Float32Array(v);
+  if(vbo) gl.deleteBuffer(vbo);
+  vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  const STRIDE = 10*4;
+  gl.enableVertexAttribArray(A.pos);  gl.vertexAttribPointer(A.pos, 3, gl.FLOAT, false, STRIDE, 0);
+  gl.enableVertexAttribArray(A.nrm);  gl.vertexAttribPointer(A.nrm, 3, gl.FLOAT, false, STRIDE, 12);
+  gl.enableVertexAttribArray(A.col);  gl.vertexAttribPointer(A.col, 3, gl.FLOAT, false, STRIDE, 24);
+  gl.enableVertexAttribArray(A.emis); gl.vertexAttribPointer(A.emis,1, gl.FLOAT, false, STRIDE, 36);
+  vcount = data.length/10;
+}
+
+/* ============================================================
+   4. 玩家状态与输入
+   ============================================================ */
+const P = { x:0, z:0, yaw:0, pitch:0 };
+let steps=0, startTime=0, running=false, finished=false, showMap=true;
+const keys = Object.create(null);
+let mapDirty = true;
+let stepAcc = 0;
+
+function reset(keepOverlay){
+  generate();
+  buildMesh();
+  P.x = CELL/2; P.z = CELL/2;
+  const gx=goalI[0], gz=goalI[1];
+  P.yaw = Math.atan2((gx*CELL+CELL/2)-P.x, -((gz*CELL+CELL/2)-P.z));
+  P.pitch = 0;
+  steps = 0; finished=false; running=false; startTime=0;
+  elapsed = 0;
+  stepAcc = 0;
+  updateHUD(true);
+  drawMap();
+  if(!keepOverlay) showOverlay('start');
+}
+
+function hasWallAt(gx,gz,bit){
+  if(gx<0||gz<0||gx>=W||gz>=H) return true;
+  return (walls[idx(gx,gz)] & bit) !== 0;
+}
+function cellOf(x,z){ return [Math.floor(x/CELL), Math.floor(z/CELL)]; }
+
+// 分轴移动 + 墙体夹紧
+function tryMove(dx, dz){
+  let px = P.x, pz = P.z;
+  // 细分子步，防止高速穿墙
+  const len = Math.hypot(dx,dz), stepsN = Math.max(1, Math.ceil(len/0.18));
+  const sx = dx/stepsN, sz = dz/stepsN;
+  for(let s=0; s<stepsN; s++){
+    // X 轴
+    let nx = px + sx;
+    let [cgx,cgz] = cellOf(px,pz);
+    let [ngx,ngz] = cellOf(nx,pz);
+    if(ngx !== cgx){
+      const bit = ngx > cgx ? E : Wd;
+      if(hasWallAt(cgx,cgz,bit)) nx = ngx > cgx ? (cgx+1)*CELL - R : cgx*CELL + R;
+    }
+    nx = Math.min(Math.max(nx, R), W*CELL-R);
+    // Z 轴
+    let nz = pz + sz;
+    [cgx,cgz] = cellOf(nx,pz);
+    [ngx,ngz] = cellOf(nx,nz);
+    if(ngz !== cgz){
+      const bit = ngz > cgz ? S : N;
+      if(hasWallAt(cgx,cgz,bit)) nz = ngz > cgz ? (cgz+1)*CELL - R : cgz*CELL + R;
+    }
+    nz = Math.min(Math.max(nz, R), H*CELL-R);
+    stepAcc += Math.hypot(nx-px, nz-pz);
+    px = nx; pz = nz;
+  }
+  while(stepAcc >= CELL*0.5){ stepAcc -= CELL*0.5; steps++; }
+  const [gx,gz] = cellOf(px,pz);
+  if(gx>=0&&gz>=0&&gx<W&&gz<H && !visited[idx(gx,gz)]){ visited[idx(gx,gz)]=1; mapDirty=true; }
+  P.x = px; P.z = pz;
+  if(gx===goalI[0] && gz===goalI[1] && !finished) win();
+}
+
+/* ---------------- 键盘 ---------------- */
+window.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if(k==='r'){ reset(true); startGame(); }
+  if(k==='m'){ showMap=!showMap; document.getElementById('mapwrap').style.display = showMap?'block':'none'; }
+  if(k==='h'){ document.getElementById('overlay').classList.remove('hidden'); showOverlay('help'); }
+  if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(k)) e.preventDefault();
+});
+window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+
+/* ---------------- 鼠标视角（指针锁定） ---------------- */
+canvas.addEventListener('click', ()=>{
+  if(running && !finished && document.pointerLockElement !== canvas && !isTouch){
+    canvas.requestPointerLock();
+  }
+});
+document.addEventListener('pointerlockchange', ()=>{
+  if(document.pointerLockElement === canvas) canvas.style.cursor='none';
+  else canvas.style.cursor='crosshair';
+});
+document.addEventListener('mousemove', e=>{
+  if(document.pointerLockElement !== canvas) return;
+  P.yaw   -= e.movementX * 0.0022;
+  P.pitch -= e.movementY * 0.0022;
+  P.pitch = Math.max(-1.25, Math.min(1.25, P.pitch));
+});
+
+/* ---------------- 触屏 ---------------- */
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+const touch = {move:{id:null,x:0,y:0}, look:{id:null,x:0,y:0}};
+canvas.addEventListener('touchstart', e=>{
+  for(const t of e.changedTouches){
+    if(t.clientX < window.innerWidth*0.45 && touch.move.id===null){
+      touch.move.id=t.identifier; touch.move.x=t.clientX; touch.move.y=t.clientY;
+    } else if(touch.look.id===null){
+      touch.look.id=t.identifier; touch.look.x=t.clientX; touch.look.y=t.clientY;
+    }
+  }
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchmove', e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===touch.move.id){
+      const dy = (touch.move.y - t.clientY) * 0.045;
+      const dx = (t.clientX - touch.move.x) * 0.030;
+      const fx = Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+      const rx = -fz, rz = fx;
+      tryMove(fx*dy + rx*dx, fz*dy + rz*dx);
+      touch.move.x=t.clientX; touch.move.y=t.clientY;
+    } else if(t.identifier===touch.look.id){
+      P.yaw   -= (t.clientX - touch.look.x) * 0.006;
+      P.pitch -= (t.clientY - touch.look.y) * 0.005;
+      P.pitch = Math.max(-1.25, Math.min(1.25, P.pitch));
+      touch.look.x=t.clientX; touch.look.y=t.clientY;
+    }
+  }
+  e.preventDefault();
+},{passive:false});
+function endTouch(e){
+  for(const t of e.changedTouches){
+    if(t.identifier===touch.move.id) touch.move.id=null;
+    if(t.identifier===touch.look.id) touch.look.id=null;
+  }
+}
+canvas.addEventListener('touchend', endTouch);
+canvas.addEventListener('touchcancel', endTouch);
+
+/* ============================================================
+   5. UI
+   ============================================================ */
+const elTime=document.getElementById('time'), elSteps=document.getElementById('steps'),
+      elPct=document.getElementById('pct'), elBar=document.getElementById('barfill'),
+      elToast=document.getElementById('toast'), elWin=document.getElementById('winStats'),
+      elOv=document.getElementById('overlay'), elTitle=document.getElementById('ovTitle'),
+      elSub=document.getElementById('ovSub'), elBody=document.getElementById('ovBody'),
+      elBtn=document.getElementById('btnStart');
+let toastTimer=null;
+function toast(msg){
+  elToast.textContent = msg;
+  elToast.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ elToast.style.opacity='0'; }, 1600);
+}
+let elapsed = 0;
+function fmt(s){
+  const m = (s/60)|0, ss = (s%60)|0;
+  return String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+}
+function updateHUD(force){
+  elTime.textContent = fmt(elapsed);
+  elSteps.innerHTML = steps + '<small>步</small>';
+  let c=0; for(let i=0;i<visited.length;i++) c+=visited[i];
+  const pct = Math.round(c/(W*H)*100);
+  elPct.innerHTML = pct + '<small>%</small>';
+  elBar.style.width = pct+'%';
+}
+function showOverlay(mode){
+  elOv.classList.remove('hidden');
+  running = false;
+  if(document.pointerLockElement) document.exitPointerLock();
+  if(mode==='win'){
+    elTitle.textContent='出迷宫了';
+    elSub.textContent='Escaped';
+    elBody.style.display='none';
+    elWin.style.display='block';
+    elWin.innerHTML = '用时 <b>'+fmt(elapsed)+'</b> · 步数 <b>'+steps+'</b><br>探索了 <b>'+
+      Math.round(countVisited()/ (W*H) *100)+'%</b> 的区域';
+    elBtn.textContent='再来一局';
+  }else if(mode==='help'){
+    elTitle.textContent='怎么玩';
+    elSub.textContent='Controls';
+    elBody.style.display='block';
+    elWin.style.display='none';
+    elBtn.textContent='继续';
+  }else{
+    elTitle.textContent='3D 迷宫';
+    elSub.textContent='Space Bunny Lab';
+    elBody.style.display='block';
+    elWin.style.display='none';
+    elBtn.textContent='进入迷宫';
+  }
+}
+function countVisited(){ let c=0; for(let i=0;i<visited.length;i++) c+=visited[i]; return c; }
+function startGame(){
+  elOv.classList.add('hidden');
+  running = true; finished = false;
+  if(!startTime) startTime = performance.now();
+  if(!isTouch && document.pointerLockElement !== canvas){
+    canvas.requestPointerLock && canvas.requestPointerLock();
+  }
+}
+function win(){ finished = true; running=false; showOverlay('win'); }
+elBtn.addEventListener('click', ()=>{
+  if(finished){ reset(); startGame(); }   // 通关后再来：换一个新迷宫
+  else startGame();
+});
+document.getElementById('btnNew').addEventListener('click', ()=>{ reset(); });
+elOv.addEventListener('click', e=>{ if(e.target===elOv && !finished && elapsed>0) startGame(); });
+
+/* ============================================================
+   6. 小地图
+   ============================================================ */
+const mm = document.getElementById('minimap'), mctx = mm.getContext('2d');
+const MS = 176, CELLM = MS/W;
+function drawMap(){
+  mctx.clearRect(0,0,MS,MS);
+  mctx.fillStyle='#070a11'; mctx.fillRect(0,0,MS,MS);
+  const p = Math.max(2, CELLM*0.26);
+  for(let gz=0; gz<H; gz++) for(let gx=0; gx<W; gx++){
+    const i = idx(gx,gz), x=gx*CELLM+p/2, y=gz*CELLM+p/2, s=CELLM-p;
+    if(visited[i]){ mctx.fillStyle = i===goalIdx ? 'rgba(93,245,216,.30)' : 'rgba(122,168,255,.13)'; }
+    else mctx.fillStyle='rgba(120,150,200,.045)';
+    mctx.fillRect(x,y,s,s);
+  }
+  // 墙线
+  mctx.strokeStyle='rgba(150,190,255,.30)'; mctx.lineWidth=1;
+  mctx.beginPath();
+  for(let gz=0; gz<H; gz++) for(let gx=0; gx<W; gx++){
+    const i=idx(gx,gz), w=walls[i], x=gx*CELLM+p/2, y=gz*CELLM+p/2, s=CELLM-p;
+    if(w&N){ mctx.moveTo(x,y); mctx.lineTo(x+s,y); }
+    if(w&Wd){ mctx.moveTo(x,y); mctx.lineTo(x,y+s); }
+    if(gx===W-1 && (w&E)){ mctx.moveTo(x+s,y); mctx.lineTo(x+s,y+s); }
+    if(gz===H-1 && (w&S)){ mctx.moveTo(x,y+s); mctx.lineTo(x+s,y+s); }
+  }
+  mctx.stroke();
+  // 出口
+  if(visited[goalIdx]){
+    const gx=goalIdx%W, gz=(goalIdx/W)|0;
+    mctx.fillStyle='#5df5d8';
+    mctx.beginPath(); mctx.arc(gx*CELLM+CELLM/2, gz*CELLM+CELLM/2, CELLM*0.24, 0, 7); mctx.fill();
+  }
+  // 玩家
+  const px = P.x/CELL*CELLM, py = P.z/CELL*CELLM;
+  mctx.save(); mctx.translate(px,py); mctx.rotate(-P.yaw);
+  mctx.fillStyle='#ffa14d';
+  mctx.beginPath(); mctx.moveTo(0,-CELLM*0.34); mctx.lineTo(CELLM*0.26, CELLM*0.28);
+  mctx.lineTo(0, CELLM*0.10); mctx.lineTo(-CELLM*0.26, CELLM*0.28); mctx.closePath(); mctx.fill();
+  mctx.restore();
+  mapDirty = false;
+}
+
+/* ============================================================
+   7. 主循环
+   ============================================================ */
+const mvp = new Float32Array(16), proj = new Float32Array(16), view = new Float32Array(16);
+let last = performance.now();
+
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const w = Math.floor(window.innerWidth*dpr), h = Math.floor(window.innerHeight*dpr);
+  if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h; }
+  gl.viewport(0,0,canvas.width,canvas.height);
+}
+window.addEventListener('resize', resize);
+
+function frame(now){
+  const dt = Math.min((now-last)/1000, 0.05);
+  last = now;
+  resize();
+
+  if(running && !finished){
+    if(!startTime) startTime = now;
+    elapsed = (now-startTime)/1000;
+    // 键盘移动
+    const sp = 4.2*dt;
+    let fwd=0, strafe=0;
+    if(keys['w']||keys['arrowup'])   fwd += 1;
+    if(keys['s']||keys['arrowdown']) fwd -= 1;
+    if(keys['a']) strafe -= 1;
+    if(keys['d']) strafe += 1;
+    if(keys['arrowleft'])  P.yaw += 1.9*dt;
+    if(keys['arrowright']) P.yaw -= 1.9*dt;
+    if(fwd||strafe){
+      const fx=Math.sin(P.yaw), fz=-Math.cos(P.yaw), rx=-fz, rz=fx;
+      const l = Math.hypot(fwd,strafe);
+      tryMove((fx*fwd + rx*strafe)/l*sp, (fz*fwd + rz*strafe)/l*sp);
+    }
+    if(keys[' ']) P.yaw += 2.4*dt;
+  }
+
+  // 相机
+  const cy = 1.62;
+  const eye = [P.x, cy, P.z];
+  const cp = Math.cos(P.pitch);
+  const fwd = [Math.sin(P.yaw)*cp, Math.sin(P.pitch), -Math.cos(P.yaw)*cp];
+  buildView(view, eye, fwd);
+
+  perspective(proj, 1.16, canvas.width/canvas.height, 0.05, 60);
+  mul(mvp, proj, view);
+  gl.useProgram(prog);
+  gl.uniformMatrix4fv(U.mvp, false, mvp);
+  gl.uniform3f(U.cam, eye[0], eye[1], eye[2]);
+  gl.uniform3f(U.fwd, fwd[0], fwd[1], fwd[2]);
+  gl.uniform1f(U.time, now/1000);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.drawArrays(gl.TRIANGLES, 0, vcount);
+
+  if(running){ updateHUD(); if(mapDirty) drawMap(); }
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   8. 启动
+   ============================================================ */
+gl.enable(gl.DEPTH_TEST);
+gl.disable(gl.CULL_FACE);   // 迷宫内部单面可见，关闭剔除更稳妥
+gl.clearColor(0.035,0.05,0.085,1);
+resize();
+reset();
+showOverlay('start');
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
