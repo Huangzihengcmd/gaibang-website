@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GPT-6 Astra · 粒子星海</title>
+<style>
+  :root{
+    --bg:#000;
+    --fg:#f4f4f2;
+    --fg-60:rgba(244,244,242,.60);
+    --fg-38:rgba(244,244,242,.38);
+    --fg-18:rgba(244,244,242,.18);
+    --line:rgba(244,244,242,.12);
+    --warm:#ffb26b;
+    --cold:#8ab4ff;
+    --vw:100vw;
+    --vh:100vh;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg);-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:16px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    overscroll-behavior-y:none;
+  }
+  ::selection{background:rgba(255,178,107,.28)}
+
+  /* ── 粒子画布：全站固定背景层 ───────────────────────── */
+  #stage{
+    position:fixed; inset:0; width:100%; height:100%;
+    display:block; z-index:0; background:#000;
+    touch-action:pan-y;
+  }
+  .webgl-fallback{
+    position:fixed; inset:0; z-index:0; background:#000;
+    display:none; place-items:center; text-align:center;
+    color:var(--fg-60); font-size:14px; padding:40px;
+  }
+
+  /* ── 顶栏 ───────────────────────────────────────────── */
+  .nav{
+    position:fixed; top:0; left:0; right:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px clamp(18px,4vw,44px);
+    mix-blend-mode:difference;
+  }
+  .nav .mark{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .nav .links{display:flex;gap:26px;font-size:13.5px;color:rgba(255,255,255,.72)}
+  .nav .links a{color:inherit;text-decoration:none;transition:color .2s}
+  .nav .links a:hover{color:#fff}
+  @media(max-width:760px){ .nav .links{display:none} }
+
+  /* ── 固定大字 chrome：GPT / Astra ──────────────────── */
+  .chrome{
+    position:fixed; inset:0; z-index:20; pointer-events:none;
+    transition:opacity .35s ease;
+  }
+  .chrome .lbl{
+    position:absolute; top:50%;
+    font-size:clamp(52px,10.5vw,164px);
+    font-weight:500; letter-spacing:-.045em; line-height:.9;
+    transform:translateY(-50%);
+    white-space:nowrap;
+    color:rgba(244,244,242,.94);
+  }
+  .chrome .lbl.l{left:clamp(16px,4.6vw,72px)}
+  .chrome .lbl.r{right:clamp(16px,4.6vw,72px)}
+
+  /* ── 版面 ───────────────────────────────────────────── */
+  main{position:relative;z-index:10}
+  section{position:relative}
+  .hero{min-height:100svh;display:grid;place-items:center;text-align:center;padding:0 24px}
+  .cue{min-height:100svh;display:flex;align-items:flex-end;justify-content:center;padding:0 24px 8vh}
+
+  .hero-inner{max-width:900px}
+  .eyebrow{
+    font-size:12px;letter-spacing:.20em;text-transform:uppercase;
+    color:var(--fg-38);margin-bottom:26px;
+  }
+  .hero h1{
+    font-size:clamp(30px,4.6vw,62px);font-weight:400;letter-spacing:-.03em;
+    line-height:1.12;text-wrap:balance;margin-bottom:22px;
+  }
+  .hero p.lede{
+    font-size:clamp(15px,1.5vw,19px);color:var(--fg-60);
+    max-width:60ch;margin:0 auto;text-wrap:pretty;
+  }
+  .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:38px}
+  .btn{
+    appearance:none;border:1px solid var(--fg-18);background:rgba(255,255,255,.04);
+    color:var(--fg);border-radius:999px;padding:11px 22px;font-size:14px;
+    font-family:inherit;cursor:pointer;backdrop-filter:blur(12px);
+    transition:background .2s,border-color .2s,transform .2s;
+  }
+  .btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3)}
+  .btn:active{transform:scale(.97)}
+  .btn:focus-visible{outline:2px solid var(--cold);outline-offset:3px}
+  .btn.primary{background:var(--fg);color:#000;border-color:var(--fg)}
+  .btn.primary:hover{background:#fff}
+
+  .cue-cap{text-align:center;max-width:640px}
+  .cue-cap .idx{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--fg-38);margin-bottom:12px}
+  .cue-cap h2{font-size:clamp(20px,2.6vw,32px);font-weight:400;letter-spacing:-.02em;margin-bottom:10px}
+  .cue-cap p{font-size:14.5px;color:var(--fg-38)}
+
+  .scroll-cue{
+    position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-38);
+  }
+  .scroll-cue .line{width:1px;height:46px;background:linear-gradient(var(--fg-18),transparent);position:relative;overflow:hidden}
+  .scroll-cue .line::after{
+    content:"";position:absolute;inset:0;background:linear-gradient(transparent,var(--fg));
+    animation:cue 2.4s cubic-bezier(.6,0,.3,1) infinite;
+  }
+  @keyframes cue{0%{transform:translateY(-100%)}60%,100%{transform:translateY(100%)}}
+
+  .prose{
+    padding:16vh 24px;max-width:820px;margin:0 auto;
+    display:flex;flex-direction:column;gap:22px;
+  }
+  .prose h3{font-size:clamp(22px,2.8vw,34px);font-weight:400;letter-spacing:-.025em;line-height:1.2;margin-bottom:6px}
+  .prose p{color:var(--fg-60);font-size:clamp(15px,1.35vw,17px);text-wrap:pretty}
+  .prose .lead{color:var(--fg);font-size:clamp(17px,1.9vw,22px);line-height:1.5}
+  .prose code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.88em;background:rgba(255,255,255,.07);
+    padding:2px 7px;border-radius:6px;color:var(--fg);
+  }
+  .prose ul{color:var(--fg-60);font-size:16px;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+  .prose li::marker{color:var(--fg-38)}
+  .prose strong{color:var(--fg);font-weight:500}
+  .rule{height:1px;background:var(--line);margin:6vh auto;max-width:820px;width:calc(100% - 48px)}
+
+  /* ── 参数面板 ───────────────────────────────────────── */
+  .hud{
+    position:fixed;right:clamp(14px,2.2vw,26px);bottom:clamp(14px,2.2vw,26px);
+    z-index:45;display:flex;flex-direction:column;gap:8px;align-items:flex-end;
+  }
+  .hud-toggle{
+    appearance:none;border:1px solid var(--line);background:rgba(10,10,10,.55);
+    color:var(--fg-60);border-radius:999px;padding:7px 14px;font-size:11px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;
+    cursor:pointer;backdrop-filter:blur(14px);transition:color .2s,border-color .2s;
+  }
+  .hud-toggle:hover{color:var(--fg);border-color:rgba(255,255,255,.3)}
+  .hud-panel{
+    display:none;min-width:238px;
+    border:1px solid var(--line);border-radius:14px;
+    background:rgba(10,10,10,.72);backdrop-filter:blur(18px);
+    padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+  }
+  .hud-panel.open{display:flex}
+  .hud-panel .row{display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:11px}
+  .hud-panel .row span:first-child{color:var(--fg-38);letter-spacing:.06em}
+  .hud-panel .row span:last-child{color:var(--fg-60);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .hud-panel .bar{height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+  .hud-panel .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cold),var(--warm));transition:width .1s linear}
+  .hud-panel .keys{
+    margin-top:4px;padding-top:10px;border-top:1px solid var(--line);
+    font-size:10.5px;line-height:1.9;color:var(--fg-38);
+  }
+  .hud-panel .keys b{
+    display:inline-block;min-width:17px;text-align:center;
+    border:1px solid var(--line);border-radius:4px;padding:1px 4px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:400;color:var(--fg-60);
+  }
+
+  footer{
+    position:relative;z-index:10;
+    padding:12vh 24px 8vh;max-width:820px;margin:0 auto;
+    color:var(--fg-38);font-size:13px;line-height:1.9;
+    border-top:1px solid var(--line);
+  }
+  footer a{color:var(--fg-60)}
+
+  .noscene{position:fixed;inset:0;display:grid;place-items:center;color:var(--fg-38);font-size:14px;padding:40px;text-align:center}
+
+  @media (prefers-reduced-motion:reduce){
+    .scroll-cue .line::after{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="webgl-fallback" id="fallback">
+  <div>当前浏览器未启用 WebGL，粒子星海无法渲染。<br>请在支持 WebGL 的浏览器中打开。</div>
+</div>
+
+<header class="nav">
+  <div class="mark">GPT-6 Astra</div>
+  <nav class="links">
+    <a href="#intro">Overview</a>
+    <a href="#cursor">粒子形态</a>
+    <a href="#knot">Astra 结</a>
+  </nav>
+</header>
+
+<div class="chrome" id="chrome" aria-hidden="true">
+  <span class="lbl l">GPT</span>
+  <span class="lbl r">Astra</span>
+</div>
+
+<main>
+
+  <!-- 形态 00：数字 6（星系聚拢而成） -->
+  <section class="hero cue" data-astra-scroll-cue="true" data-shape="six">
+    <div class="hero-inner">
+      <div class="eyebrow">A new star enters the Chat</div>
+      <h1>一片星海，缓缓聚拢成新世代的形状</h1>
+      <p class="lede">向下滚动，星点散开成无垠星海，再重新聚拢成指针、聚成结。按住拖动可以旋转整片星域。</p>
+      <div class="hero-actions">
+        <button class="btn primary" id="replay">重播聚拢动画</button>
+        <button class="btn" id="burst">散开星海</button>
+      </div>
+    </div>
+    <div class="scroll-cue"><span>Scroll</span><i class="line"></i></div>
+  </section>
+
+  <section class="prose" id="intro">
+    <div>
+      <h3>它是怎么工作的</h3>
+    </div>
+    <p class="lead">这不是视频，也不是序列帧。整片星海是一个 WebGL 粒子场，<strong>每一颗粒子同时持有两套坐标</strong>：一套是散布在全屏的星点位置，另一套是从 SVG 路径上采样出来的目标位置。</p>
+    <p>滚动位置决定一个叫 <code>disperse</code> 的标量——原页面把它写死为 <code>1</code>，配 <code>flowSpeed: 0.8</code> 与 <code>easing: smoothstep</code>。在片元坐标里插值时，粒子在两套坐标之间平滑过渡：<code>disperse → 0</code> 时聚成形状，<code>disperse → 1</code> 时散成星点。缓动用 smoothstep，所以两端都是软着陆，不会突兀。</p>
+    <p>关键在于形状目标点的采样方式。下面两个形态<strong>直接取自 OpenAI 原页面的内联 SVG path</strong>——鼠标指针是 <code>viewBox="0 0 19 19"</code>、描边 <code>0.8</code>；Astra 结是 <code>viewBox="0 0 1726 1538"</code> 的六段三次贝塞尔、描边 <code>80</code>。粒子沿路径等弧长取样，再沿法线方向做高斯偏移，于是自然填满了描边带。</p>
+    <p>鼠标交互分两层：指针附近产生一个<strong>径向斥力加切向涡旋</strong>，把粒子推开的同时卷起来；命中范围内的粒子额外放大、提亮，形成一圈局部辉光。</p>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- 形态 01：鼠标指针 -->
+  <section class="cue" id="cursor" data-astra-scroll-cue="true" data-shape="cursor">
+    <div class="cue-cap">
+      <div class="idx">形态 01 — Cursor</div>
+      <h2>鼠标指针</h2>
+      <p>等弧长取样 + 法线高斯偏移；按 <code>R</code> 重播，<code>H</code> 收起界面。</p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <section class="prose">
+    <div><h3>为什么看起来像星系</h3></div>
+    <p>聚拢态并非静止。每个粒子在顶点着色器里都有一条独立的相位轨道：<code>angle = time × flow × (0.010 + seed × 0.030)</code>，散开时权重接近 1，聚拢时趋近 0。再叠一层极小的呼吸抖动，形状就有了生命感，同时不会糊掉边缘。</p>
+    <p>旋转用的是同一个 <code>uRot</code>。因为所有位移都在<strong>等比空间</strong>（先乘上宽高比再旋转）里完成，所以不管窗口多宽，旋转都是正圆而不是被拉扁的椭圆。</p>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- 形态 02：OpenAI 结 -->
+  <section class="cue" id="knot" data-astra-scroll-cue="true" data-shape="knot">
+    <div class="cue-cap">
+      <div class="idx">形态 02 — OpenAI Blossom</div>
+      <h2>Astra 结</h2>
+      <p>六段三次贝塞尔，粒子数按各段弧长比例分配，所以粗细完全均匀。</p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <section class="prose">
+    <div><h3>可以拆开看的几件事</h3></div>
+    <ul>
+      <li><strong>形态布局</strong>：高度锁定为 <code>0.8 × 视口高</code>，最大宽度 <code>576px</code>，等比缩放居中——与原页面的 <code>--astra-shape-height</code> / <code>--astra-shape-max-width</code> 一致。</li>
+      <li><strong>冷暖双色</strong>：粒子按种子在冷白蓝与暖琥珀之间取值，模拟色温混杂的星场。</li>
+      <li><strong>双通道叠加</strong>：先画一层三倍尺寸、极低透明度的辉光，再画一层锐利核心，加法混合自然形成光晕。</li>
+      <li><strong>指针惯性</strong>：松手后保留角速度并按 <code>e^(-4.2t)</code> 衰减；方向键同样可以旋转。</li>
+    </ul>
+    <p>整页零依赖、零构建、零网络请求，全部逻辑与着色器内联在单个 HTML 文件里。</p>
+  </section>
+
+</main>
+
+<footer>
+  GPT-6 Astra 粒子星海 · 交互演示页<br>
+  粒子场、WebGL 管线与两个形态的 SVG 路径数据均在单文件内联实现。<br>
+  键盘：<b>R</b> 重播 · <b>B</b> 散开 · <b>H</b> 收起界面 · <b>← →</b> 旋转
+</footer>
+
+<div class="hud">
+  <div class="hud-panel" id="hudPanel">
+    <div class="row"><span>DISPERSE</span><span id="vDis">1.000</span></div>
+    <div class="bar"><i id="bDis" style="width:100%"></i></div>
+    <div class="row"><span>FLOW SPEED</span><span id="vFlow">0.80</span></div>
+    <div class="bar"><i id="bFlow" style="width:80%"></i></div>
+    <div class="row"><span>ROTATION</span><span id="vRot">0.0°</span></div>
+    <div class="bar"><i id="bRot" style="width:50%"></i></div>
+    <div class="row"><span>PARTICLES</span><span id="vNum">—</span></div>
+    <div class="row"><span>SHAPE</span><span id="vShape">six</span></div>
+    <div class="keys">
+      <b>R</b> 重播动画　<b>B</b> 散开星海<br>
+      <b>H</b> 收起界面　<b>←</b><b>→</b> 旋转星域<br>
+      按住鼠标左键拖动同样可旋转
+    </div>
+  </div>
+  <button class="hud-toggle" id="hudToggle" aria-expanded="false">粒子参数</button>
+</div>
+
+<script>
+"use strict";
+(function(){
+
+/* ════════════════════════════════════════════════════════
+   0 · 配置
+   ════════════════════════════════════════════════════════ */
+const CFG = {
+  flowSpeed : 0.8,        // 原页面 particles.flowSpeed
+  targetDisp: 1,          // 原页面 particles.disperse（默认散开）
+  shapeMaxW : 576,        // 原页面 --astra-shape-max-width
+  shapeVH   : 0.8,        // 原页面 --astra-shape-height: 0.8 × 视口高
+  introDur  : 2.8,        // autoplay 入场时长
+  rotDecay  : 4.2,        // 旋转惯性衰减
+  rotVel    : 0.0022,     // 每像素拖动 → 弧度
+  cursorR   : 0.42,       // 鼠标作用半径（等比空间）
+  cursorPush: 0.055,
+  cursorSwrl: 0.030,
+  autoSpin  : 0.012,      // autoplay 缓慢自转
+};
+
+const isMobile = matchMedia("(pointer:coarse)").matches || innerWidth < 760;
+const N = isMobile ? 16000 : 52000;
+
+/* ════════════════════════════════════════════════════════
+   1 · 工具
+   ════════════════════════════════════════════════════════ */
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const smoothstep = (a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+const easeOutCubic = t => 1-Math.pow(1-t,3);
+const lerp = (a,b,t)=> a+(b-a)*t;
+
+// 确定性随机：同一形状每次构建的分布完全一致
+function mulberry(seed){
+  let a=seed>>>0;
+  return function(){
+    a=(a+0x6D2B79F5)|0;
+    let t=Math.imul(a^(a>>>15),1|a);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+
+/* ════════════════════════════════════════════════════════
+   2 · 原页面的形状数据（逐字节取自 OpenAI 内联 SVG）
+   ════════════════════════════════════════════════════════ */
+const SHAPE_DEFS = {
+  // 形态 01：鼠标指针 —— viewBox 0 0 19 19, stroke-width 0.8
+  cursor: {
+    paths:[{
+      d:"M9.60978 17.0223C9.24308 17.739 8.76808 18.189 8.18478 18.3723C7.60148 18.564 7.03478 18.4931 6.48478 18.1598C5.93478 17.8348 5.53061 17.314 5.27228 16.5973L0.672282 3.68478C0.497282 3.19312 0.455612 2.72645 0.547282 2.28478C0.638952 1.83478 0.838952 1.45561 1.14728 1.14728C1.45561 0.838948 1.83478 0.638949 2.28478 0.547279C2.73478 0.455619 3.20561 0.497279 3.69728 0.672279L16.6098 5.27228C17.3265 5.53062 17.8473 5.93478 18.1723 6.48478C18.5056 7.02648 18.5765 7.58898 18.3848 8.17228C18.2015 8.75558 17.7515 9.23058 17.0348 9.59728L12.1098 12.1098L9.60978 17.0223Z",
+      stroke:0.8
+    }],
+    viewBox:[0,0,19,19],
+    fill:[0.40,0.60],      // [描边占比, 填充占比]
+    seed:90210
+  },
+
+  // 形态 02：OpenAI 结 —— viewBox 0 0 1726 1538, stroke-width 80
+  knot: {
+    paths:[
+      {d:"M1025.52 167.475C960.586 89.5754 862.821 40 753.477 40C557.968 40 399.477 198.491 399.477 394V737.278C399.477 757.119 409.975 775.478 427.074 785.541L851.477 1035.3", stroke:80},
+      {d:"M1465.07 608.95C1500.07 513.764 1494.12 404.309 1439.45 309.614C1341.69 140.298 1125.19 82.2866 955.872 180.041L658.585 351.68C641.402 361.6 630.752 379.872 630.587 399.712L626.49 892.135", stroke:80},
+      {d:"M1302.52 1210.35C1402.45 1193.06 1494.27 1133.18 1548.94 1038.49C1646.69 869.17 1588.68 652.667 1419.36 554.912L1122.08 383.273C1104.89 373.353 1083.75 373.265 1066.48 383.042L637.982 625.706", stroke:80},
+      {d:"M700.415 1370.27C765.351 1448.17 863.116 1497.74 972.461 1497.74C1167.97 1497.74 1326.46 1339.25 1326.46 1143.74V800.466C1326.46 780.625 1315.96 762.266 1298.86 752.203L874.461 502.444", stroke:80},
+      {d:"M260.866 928.794C225.871 1023.98 231.82 1133.44 286.492 1228.13C384.247 1397.45 600.75 1455.46 770.065 1357.7L1067.35 1186.06C1084.54 1176.14 1095.19 1157.87 1095.35 1138.03L1099.45 645.61", stroke:80},
+      {d:"M423.42 327.396C323.488 344.682 231.672 404.562 177 499.257C79.2456 668.573 137.257 885.076 306.573 982.83L603.861 1154.47C621.043 1164.39 642.192 1164.48 659.456 1154.7L1087.96 912.037", stroke:80}
+    ],
+    viewBox:[0,0,1726,1538],
+    fill:[1,0],
+    seed:31337
+  }
+};
+
+/* ════════════════════════════════════════════════════════
+   3 · 形态 00：数字 6 —— 由星海聚拢而成
+      直接用字体栅格化取样，比手写贝塞尔更接近原版字形
+   ════════════════════════════════════════════════════════ */
+const GLYPH_FONT = '"Helvetica Neue",Helvetica,Arial,"Segoe UI",system-ui,sans-serif';
+
+function buildGlyphShape(ch, count){
+  const rnd = mulberry(20260903);
+
+  let fontSize = 420, ink = null, font = null, metric = null, cv = null;
+  // 自适应字号：让被点亮的像素数 ≈ 粒子数，保证覆盖率约 1:1
+  for(let attempt=0; attempt<5; attempt++){
+    font = `600 ${fontSize}px ${GLYPH_FONT}`;
+    const probe = document.createElement("canvas").getContext("2d");
+    probe.font = font;
+    metric = probe.measureText(ch);
+    const asc = metric.actualBoundingBoxAscent  || fontSize*0.72;
+    const desc = metric.actualBoundingBoxDescent || fontSize*0.04;
+    const left = metric.actualBoundingBoxLeft    || 0;
+    const right= metric.actualBoundingBoxRight   || fontSize*0.55;
+    const w = Math.ceil(left+right)+16, h = Math.ceil(asc+desc)+16;
+
+    cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext("2d", {willReadFrequently:true});
+    ctx.fillStyle = "#fff";
+    ctx.font = font;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(ch, 8+left, 8+asc);
+
+    const d = ctx.getImageData(0,0,w,h).data;
+    const pts = [];
+    for(let y=0;y<h;y++){
+      const row = y*w*4;
+      for(let x=0;x<w;x++){
+        if(d[row + x*4 + 3] > 130) pts.push(x,y);
+      }
+    }
+    ink = pts;
+    if(pts.length < count*1.25) break;
+    fontSize = Math.max(160, Math.round(fontSize * Math.sqrt(count*1.15 / pts.length)));
+  }
+
+  const nInk = ink.length/2;
+  const pts = new Float32Array(count*2);
+  const rnd2 = mulberry(777);
+
+  if(nInk >= count){
+    // 无放回抽样，逐像素精确覆盖
+    const idx = new Uint32Array(nInk);
+    for(let i=0;i<nInk;i++) idx[i]=i;
+    for(let i=nInk-1;i>0;i--){ const j=(rnd2()*(i+1))|0; const t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
+    for(let i=0;i<count;i++){
+      const p = idx[i]*2;
+      pts[i*2]   = ink[p]   + (rnd()-0.5)*0.85;
+      pts[i*2+1] = ink[p+1] + (rnd()-0.5)*0.85;
+    }
+  }else{
+    // 有放回抽样
+    for(let i=0;i<count;i++){
+      const p = ((rnd()*nInk)|0)*2;
+      pts[i*2]   = ink[p]   + (rnd()-0.5)*1.15;
+      pts[i*2+1] = ink[p+1] + (rnd()-0.5)*1.15;
+    }
+  }
+
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(let i=0;i<count;i++){
+    if(pts[i*2]<x0)x0=pts[i*2]; if(pts[i*2]>x1)x1=pts[i*2];
+    if(pts[i*2+1]<y0)y0=pts[i*2+1]; if(pts[i*2+1]>y1)y1=pts[i*2+1];
+  }
+  return { pts, bbox:{x:x0,y:y0,w:x1-x0,h:y1-y0} };
+}
+
+/* ════════════════════════════════════════════════════════
+   4 · 形态构建：SVG path → 目标点集
+      · 沿路径等弧长取样（getPointAtLength）
+      · 沿法线方向做近似高斯偏移，填满描边带
+      · 需要填充时用 isPointInPath 拒绝采样
+   ════════════════════════════════════════════════════════ */
+const SVGNS = "http://www.w3.org/2000/svg";
+
+function buildPathShape(def, count){
+  const rnd = mulberry(def.seed);
+  const holder = document.createElementNS(SVGNS,"svg");
+  holder.setAttribute("style","position:fixed;left:-12000px;top:0;width:8px;height:8px;overflow:hidden;opacity:0;pointer-events:none");
+  const els = def.paths.map(pd=>{
+    const el = document.createElementNS(SVGNS,"path");
+    el.setAttribute("d", pd.d);
+    el.setAttribute("fill","none");
+    el.setAttribute("stroke","#000");
+    el.setAttribute("stroke-width", String(pd.stroke));
+    el.setAttribute("stroke-linecap","round");
+    el.setAttribute("stroke-linejoin","round");
+    holder.appendChild(el);
+    return el;
+  });
+  document.body.appendChild(holder);
+
+  const lens = els.map(el=>el.getTotalLength());
+  const total = lens.reduce((a,b)=>a+b,0);
+
+  const fillRatio = def.fill[1];
+  const nStroke = Math.round(count*(1-fillRatio));
+  const nFill   = count - nStroke;
+
+  const pts = new Float32Array(count*2);
+  let w = 0;
+
+  // ── 描边带
+  for(let k=0;k<els.length;k++){
+    const share = (k===els.length-1)
+      ? (nStroke - w)
+      : Math.round(nStroke * lens[k]/total);
+    const el = els[k], L = lens[k], sw = def.paths[k].stroke;
+    for(let i=0;i<share;i++){
+      const t = (rnd() + rnd())*0.5 * L;          // 三角分布，减少端点聚集
+      const p  = el.getPointAtLength(t);
+      const a  = el.getPointAtLength(Math.max(0, t-0.75));
+      const b  = el.getPointAtLength(Math.min(L, t+0.75));
+      let tx = b.x-a.x, ty = b.y-a.y;
+      const m = Math.hypot(tx,ty) || 1; tx/=m; ty/=m;
+      // Box-Muller 高斯
+      const u1 = Math.max(1e-7, rnd()), u2 = rnd();
+      const g  = Math.sqrt(-2*Math.log(u1))*Math.cos(6.28318530718*u2);
+      const off = g * sw * 0.29;                   // σ ≈ 0.29·stroke，落在 ±stroke/2 内
+      pts[w*2]   = p.x - ty*off;
+      pts[w*2+1] = p.y + tx*off;
+      w++;
+    }
+    if(w >= nStroke) break;
+  }
+  // 补齐取整误差
+  while(w < nStroke){ pts[w*2]=pts[(w-1)*2]; pts[w*2+1]=pts[(w-1)*2+1]; w++; }
+
+  // ── 内部填充
+  if(nFill > 0){
+    const [vx,vy,vw,vh] = def.viewBox;
+    const S = 44;
+    const c = document.createElement("canvas");
+    c.width  = Math.ceil(vw*S);
+    c.height = Math.ceil(vh*S);
+    const ctx = c.getContext("2d",{willReadFrequently:true});
+    ctx.setTransform(S,0,0,S,-vx*S,-vy*S);
+    const p2 = new Path2D(def.paths[0].d);
+
+    let placed = 0, guard = 0;
+    const maxTries = nFill*60;
+    while(placed < nFill && guard < maxTries){
+      guard++;
+      const x = vx + rnd()*vw;
+      const y = vy + rnd()*vh;
+      if(ctx.isPointInPath(p2, x, y)){
+        pts[w*2]=x; pts[w*2+1]=y; w++; placed++;
+      }
+    }
+    while(w < count){ pts[w*2]=pts[(w-1)*2]; pts[w*2+1]=pts[(w-1)*2+1]; w++; }
+  }
+
+  document.body.removeChild(holder);
+
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(let i=0;i<count;i++){
+    const x=pts[i*2], y=pts[i*2+1];
+    if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+  }
+  return { pts, bbox:{x:x0,y:y0,w:(x1-x0)||1,h:(y1-y0)||1} };
+}
+
+const SHAPES = { six:null, cursor:null, knot:null };
+
+function ensureShape(name){
+  if(SHAPES[name]) return true;
+  if(name === "six"){
+    SHAPES.six = buildGlyphShape("6", N);
+  }else if(SHAPE_DEFS[name]){
+    SHAPES[name] = buildPathShape(SHAPE_DEFS[name], N);
+  }
+  return !!SHAPES[name];
+}
+
+/* 形态空间坐标 → 裁剪空间（完全对齐原页面尺寸规则） */
+function toClip(shape, vw, vh, out){
+  const b = shape.bbox;
+  const boxH = CFG.shapeVH * vh;
+  const boxW = Math.min(CFG.shapeMaxW, vw*0.92);
+  const s = Math.min(boxH/b.h, boxW/b.w);
+  const cx = b.x + b.w/2, cy = b.y + b.h/2;
+  const kx = 2*s/vw, ky = 2*s/vh;
+  for(let i=0;i<N;i++){
+    out[i*2]   = (shape.pts[i*2]   - cx)*kx;
+    out[i*2+1] =-(shape.pts[i*2+1] - cy)*ky;
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   5 · 星点分布（clip 空间，overscan 1.18）
+   ════════════════════════════════════════════════════════ */
+const stars = new Float32Array(N*2);
+(function(){
+  const rnd = mulberry(4242);
+  const CA = Math.cos(0.48), SA = Math.sin(0.48);
+  for(let i=0;i<N;i++){
+    let x, y;
+    if(rnd() < 0.42){
+      // 斜向星带
+      const g = (rnd()+rnd()+rnd()-1.5)/1.5;
+      const bx = g*2.5, by = g*0.8 + (rnd()-0.5)*0.42;
+      x =  bx*CA - by*SA;
+      y =  bx*SA + by*CA;
+    }else{
+      const r = Math.pow(rnd(), 0.5)*1.25;
+      const a = rnd()*6.28318530718;
+      x = Math.cos(a)*r*1.28;
+      y = Math.sin(a)*r;
+    }
+    stars[i*2]   = clamp(x,-1.18,1.18);
+    stars[i*2+1] = clamp(y,-1.18,1.18);
+  }
+})();
+
+/* 每粒子属性：x=色温随机 y=尺寸 z=景深 w=相位 */
+const seeds = new Float32Array(N*4);
+(function(){
+  const rnd = mulberry(9182);
+  for(let i=0;i<N;i++){
+    seeds[i*4]   = rnd();
+    seeds[i*4+1] = 0.34 + Math.pow(rnd(), 2.3)*1.75;
+    seeds[i*4+2] = rnd();
+    seeds[i*4+3] = rnd();
+  }
+})();
+
+/* ════════════════════════════════════════════════════════
+   6 · WebGL
+   ════════════════════════════════════════════════════════ */
+const canvas = document.getElementById("stage");
+const gl = canvas.getContext("webgl", {antialias:false, alpha:false, depth:false, stencil:false, powerPreference:"high-performance"})
+        || canvas.getContext("experimental-webgl");
+
+if(!gl){
+  canvas.style.display = "none";
+  document.getElementById("fallback").style.display = "grid";
+  return;
+}
+
+const VERT = `
+precision highp float;
+attribute vec2 aT0;
+attribute vec2 aT1;
+attribute vec2 aStar;
+attribute vec4 aSeed;
+
+uniform float uBlend, uMorph, uTime, uRot, uFlow, uAspect;
+uniform float uSize, uAlpha, uGlow, uMouseAmt, uMouseR, uCursorPush, uCursorSwrl;
+
+varying vec3  vCol;
+varying float vA;
+
+void main(){
+  vec2 tgt = mix(aT0, aT1, uBlend);
+  vec2 p   = mix(tgt, aStar, uMorph);
+
+  // 等比空间：保证旋转是正圆、鼠标作用是圆形
+  vec2 q = vec2(p.x*uAspect, p.y);
+
+  // 轨道漂移（散开态权重高）
+  float ang = uTime * uFlow * (0.010 + aSeed.w*0.030) * uMorph;
+  float ca = cos(ang), sa = sin(ang);
+  q = vec2(q.x*ca - q.y*sa, q.x*sa + q.y*ca);
+
+  // 呼吸抖动
+  float amp = 0.0018 + 0.0042*uMorph;
+  q += vec2(sin(uTime*0.63 + aSeed.x*37.0), cos(uTime*0.51 + aSeed.y*29.0)) * amp;
+
+  // 旋转
+  float cr = cos(uRot), sr = sin(uRot);
+  q = vec2(q.x*cr - q.y*sr, q.x*sr + q.y*cr);
+
+  // 鼠标：径向斥力 + 切向涡旋
+  vec2 d = q - uMouse;
+  float dist = length(d);
+  float infl = smoothstep(uMouseR, 0.0, dist) * uMouseAmt;
+  float inv = 1.0/max(dist, 1e-4);
+  q += normalize(d + 1e-5) * infl * uCursorPush;
+  q += vec2(-d.y, d.x) * inv * infl * uCursorSwrl;
+
+  p = vec2(q.x/uAspect, q.y);
+  gl_Position = vec4(p, 0.0, 1.0);
+
+  float tw = 0.72 + 0.28*sin(uTime*1.5 + aSeed.w*24.0);
+  float depth = 0.30 + 0.70*aSeed.z;
+  gl_PointSize = max(1.0, uSize * aSeed.y * tw * (0.60 + 0.70*uMorph) * (1.0 + infl*1.6));
+
+  vec3 cold = vec3(0.70, 0.81, 1.00);
+  vec3 warm = vec3(1.00, 0.89, 0.72);
+  vec3 c = mix(cold, warm, aSeed.x) * (0.26 + 0.95*depth);
+  c += vec3(0.34, 0.42, 0.58) * infl * 0.85;
+
+  vCol = c;
+  vA   = uAlpha * (0.22 + 0.90*depth) * (0.75 + 0.60*infl);
+}`;
+
+const FRAG = `
+precision highp float;
+varying vec3  vCol;
+varying float vA;
+uniform float uGlow;
+void main(){
+  vec2 c = gl_PointCoord - 0.5;
+  float d = length(c);
+  float a = smoothstep(0.5, 0.04, d);
+  a *= a;
+  gl_FragColor = vec4(vCol * a * uGlow, a * vA);
+}`;
+
+function shader(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, VERT));
+gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FRAG));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const U = {};
+for(const k of ["uBlend","uMorph","uTime","uRot","uFlow","uAspect","uSize","uAlpha","uGlow",
+                "uMouse","uMouseAmt","uMouseR","uCursorPush","uCursorSwrl"]){
+  U[k] = gl.getUniformLocation(prog, k);
+}
+
+const bufT0 = gl.createBuffer();
+const bufT1 = gl.createBuffer();
+const bufStar = gl.createBuffer();
+const bufSeed = gl.createBuffer();
+
+gl.bindBuffer(gl.ARRAY_BUFFER, bufStar);
+gl.bufferData(gl.ARRAY_BUFFER, stars, gl.STATIC_DRAW);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, bufSeed);
+gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+
+const aT0 = gl.getAttribLocation(prog,"aT0");
+const aT1 = gl.getAttribLocation(prog,"aT1");
+const aStar = gl.getAttribLocation(prog,"aStar");
+const aSeed = gl.getAttribLocation(prog,"aSeed");
+
+function bindAttr(buf, loc, size){
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+}
+
+const clip0 = new Float32Array(N*2);
+const clip1 = new Float32Array(N*2);
+gl.bindBuffer(gl.ARRAY_BUFFER, bufT0); gl.bufferData(gl.ARRAY_BUFFER, clip0.byteLength, gl.DYNAMIC_DRAW);
+gl.bindBuffer(gl.ARRAY_BUFFER, bufT1); gl.bufferData(gl.ARRAY_BUFFER, clip1.byteLength, gl.DYNAMIC_DRAW);
+
+gl.disable(gl.DEPTH_TEST);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+gl.clearColor(0,0,0,1);
+
+let DPR = 1;
+function resize(){
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(innerWidth  * DPR));
+  const h = Math.max(1, Math.round(innerHeight * DPR));
+  if(canvas.width !== w || canvas.height !== h){
+    canvas.width = w; canvas.height = h;
+  }
+  gl.viewport(0,0,w,h);
+  refreshShapeBuffers();
+}
+
+function uploadShape(slot){
+  const shape = SHAPES[activeShape];
+  if(!shape) return;
+  toClip(shape, innerWidth, innerHeight, slot === 0 ? clip0 : clip1);
+  gl.bindBuffer(gl.ARRAY_BUFFER, slot === 0 ? bufT0 : bufT1);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, slot === 0 ? clip0 : clip1);
+}
+
+function refreshShapeBuffers(){
+  // 过渡期间 blendFrom 可能仍是上一个形态，各自用各��的裁剪坐标
+  if(SHAPES[activeShape]){
+    toClip(SHAPES[activeShape], innerWidth, innerHeight, clip0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufT0); gl.bufferSubData(gl.ARRAY_BUFFER, 0, clip0);
+  }
+  const other = SHAPES[blendFrom] || SHAPES[activeShape];
+  if(other){
+    toClip(other, innerWidth, innerHeight, clip1);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufT1); gl.bufferSubData(gl.ARRAY_BUFFER, 0, clip1);
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   7 · 状态
+   ════════════════════════════════════════════════════════ */
+const cues = [...document.querySelectorAll("[data-astra-scroll-cue]")];
+
+let activeShape = "six";
+let blendFrom   = "six";
+let blend       = 1;
+
+let morph    = 1;          // 1 = 星海 / 0 = 聚拢
+let introT   = 0;
+let burstOn  = false;
+let rotUser  = 0, rotVel = 0, rotAuto = 0;
+let mx = 2, my = 2, mouseAmt = 0, mouseSeen = false;
+
+let uiHidden = false;
+const chrome  = document.getElementById("chrome");
+const hudPanel = document.getElementById("hudPanel");
+const vDis = document.getElementById("vDis"), bDis = document.getElementById("bDis");
+const vRot = document.getElementById("vRot"), bRot = document.getElementById("bRot");
+const vShape = document.getElementById("vShape");
+document.getElementById("vNum").textContent = N.toLocaleString("en-US");
+
+function setShape(name){
+  if(name === activeShape || !ensureShape(name)) return;
+  blendFrom = activeShape;
+  blend = 0;
+  activeShape = name;
+  vShape.textContent = name;
+}
+
+/* ════════════════════════════════════════════════════════
+   8 · 交互
+   ════════════════════════════════════════════════════════ */
+let dragging = false, lastX = 0, lastMoveT = 0;
+
+addEventListener("pointermove", e=>{
+  const rect = canvas.getBoundingClientRect();
+  const u = (e.clientX - rect.left)/rect.width  * 2 - 1;
+  const v = 1 - (e.clientY - rect.top)/rect.height * 2;
+  const aspect = rect.width/rect.height;
+  mx = u*aspect; my = v;
+  mouseSeen = true;
+
+  if(dragging){
+    const dx = e.clientX - lastX;
+    rotUser += dx * CFG.rotVel;
+    const now = performance.now();
+    const dt  = Math.max(1, now-lastMoveT);
+    rotVel   = (dx*CFG.rotVel)/dt*16.7;
+    lastMoveT = now;
+    lastX = e.clientX;
+  }
+},{passive:true});
+
+addEventListener("pointerdown", e=>{
+  if(e.target.closest(".prose, footer, .hud, .hero-actions, .nav")) return;
+  if(e.button !== 0) return;
+  dragging = true; lastX = e.clientX; lastMoveT = performance.now();
+  document.body.style.cursor = "grabbing";
+},{passive:true});
+
+addEventListener("pointerup", ()=>{
+  if(!dragging) return;
+  dragging = false;
+  document.body.style.cursor = "";
+},{passive:true});
+
+addEventListener("pointerleave", ()=>{ mouseSeen = false; },{passive:true});
+
+addEventListener("keydown", e=>{
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if(k === "arrowleft")  { rotVel -= 0.028; e.preventDefault(); }
+  if(k === "arrowright") { rotVel += 0.028; e.preventDefault(); }
+  if(k === "r") replay();
+  if(k === "b") burst();
+  if(k === "h"){
+    uiHidden = !uiHidden;
+    chrome.style.opacity = uiHidden ? "0" : "1";
+    document.querySelector(".hud").style.opacity = uiHidden ? "0" : "1";
+    document.querySelector(".scroll-cue").style.opacity = uiHidden ? "0" : "1";
+    document.querySelector(".nav").style.opacity = uiHidden ? "0" : "1";
+    document.querySelectorAll(".hud").forEach(el=>el.style.pointerEvents = uiHidden ? "none" : "");
+  }
+});
+
+document.getElementById("replay").addEventListener("click", replay);
+document.getElementById("burst").addEventListener("click", burst);
+function replay(){ introT = 0; burstOn = false; }
+function burst(){ burstOn = true; }
+
+document.getElementById("hudToggle").addEventListener("click", e=>{
+  const open = hudPanel.classList.toggle("open");
+  e.currentTarget.setAttribute("aria-expanded", String(open));
+});
+
+addEventListener("resize", resize, {passive:true});
+
+/* ════════════════════════════════════════════════════════
+   9 · 滚动 → disperse
+   ════════════════════════════════════════════════════════ */
+let cueGather = 1;
+function readScroll(){
+  const vh = innerHeight;
+  let best = 0, name = activeShape;
+  for(const el of cues){
+    const r = el.getBoundingClientRect();
+    const center = r.top + r.height/2;
+    const dist = Math.abs(center - vh/2) / vh;
+    const w = 1 - smoothstep(0.10, 0.60, dist);
+    if(w > best){ best = w; name = el.dataset.shape; }
+  }
+  cueGather = best;
+  if(best > 0.001) setShape(name);
+  else if(!burstOn && introT >= 1) setShape("six");
+}
+
+/* ════════════════════════════════════════════════════════
+   10 · 主循环
+   ════════════════════════════════════════════════════════ */
+resize();
+ensureShape("six");
+uploadShape(0); uploadShape(1);
+
+let last = performance.now();
+let frame = 0;
+
+function tick(now){
+  requestAnimationFrame(tick);
+
+  const dt = Math.min(0.05, (now-last)/1000);
+  last = now;
+  frame++;
+
+  if(frame % 2 === 0) readScroll();
+
+  // ── disperse：入场 autoplay + 滚动 cue 取较大值
+  if(introT < 1){
+    introT = Math.min(1, introT + dt/CFG.introDur);
+  }
+  const introMorph = 1 - easeOutCubic(introT);
+  let target = Math.max(cueGather > 0.001 ? 1 - cueGather : CFG.targetDisp, introMorph);
+  if(burstOn) target = 1;
+  morph += (target - morph) * (1 - Math.exp(-dt*4.6));
+
+  // ── 形态切换
+  if(blend < 1){
+    blend = Math.min(1, blend + dt*1.5);
+  }
+
+  // ── 旋转
+  rotAuto += dt * CFG.autoSpin;
+  if(!dragging){
+    rotVel *= Math.exp(-dt*CFG.rotDecay);
+    rotUser += rotVel;
+  }
+  const rot = rotUser + rotAuto;
+
+  // ── 鼠标
+  const mTarget = mouseSeen ? 1 : 0;
+  mouseAmt += (mTarget - mouseAmt) * (1 - Math.exp(-dt*5.5));
+
+  // ── uniforms
+  const aspect = canvas.width/canvas.height;
+  const base   = clamp(innerHeight/820, 0.85, 2.3) * DPR;
+
+  gl.uniform1f(U.uTime, now/1000);
+  gl.uniform1f(U.uMorph, morph);
+  gl.uniform1f(U.uBlend, blend);
+  gl.uniform1f(U.uRot, rot);
+  gl.uniform1f(U.uFlow, CFG.flowSpeed);
+  gl.uniform1f(U.uAspect, aspect);
+  gl.uniform2f(U.uMouse, mx, my);
+  gl.uniform1f(U.uMouseAmt, mouseAmt);
+  gl.uniform1f(U.uMouseR, CFG.cursorR);
+  gl.uniform1f(U.uCursorPush, CFG.cursorPush);
+  gl.uniform1f(U.uCursorSwrl, CFG.cursorSwrl);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // ── 通道 1：辉光
+  gl.uniform1f(U.uSize,  base*3.4);
+  gl.uniform1f(U.uAlpha, 0.055);
+  gl.uniform1f(U.uGlow,  1.0);
+  draw();
+
+  // ── 通道 2：核心
+  gl.uniform1f(U.uSize,  base);
+  gl.uniform1f(U.uAlpha, 0.86);
+  draw();
+
+  // ── HUD
+  if(!uiHidden && frame % 4 === 0){
+    vDis.textContent = morph.toFixed(3);
+    bDis.style.width  = (morph*100).toFixed(1) + "%";
+    const deg = ((rot*180/Math.PI)%360+360)%360;
+    vRot.textContent = deg.toFixed(1) + "°";
+    bRot.style.width  = (deg/360*100).toFixed(1) + "%";
+  }
+}
+
+function draw(){
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufT0);   bindAttr(bufT0,   aT0, 2);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufT1);   bindAttr(bufT1,   aT1, 2);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufStar); bindAttr(bufStar, aStar, 2);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufSeed); bindAttr(bufSeed, aSeed, 4);
+  gl.drawArrays(gl.POINTS, 0, N);
+}
+
+requestAnimationFrame(tick);
+
+// 首屏尽快把另外两个形态建好，避免滚动到时才卡一下
+const warm = ()=>{ ensureShape("cursor"); ensureShape("knot"); };
+if("requestIdleCallback" in window) requestIdleCallback(warm, {timeout:1200});
+else setTimeout(warm, 300);
+
+})();
+</script>
+</body>
+</html>

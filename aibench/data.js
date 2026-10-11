@@ -130,6 +130,18 @@ window.AIBENCH = {
         "watch": "2026-08-29",
         "qingming": "2026-08-29"
       }
+    },
+    {
+      "slug": "spacebunny",
+      "name": "Space bunny",
+      "works": {
+        "qingming": "spacebunny-qingming.html",
+        "astra": "spacebunny-astra.html"
+      },
+      "dates": {
+        "qingming": "2026-10-11",
+        "astra": "2026-10-11"
+      }
     }
   ]
 };
