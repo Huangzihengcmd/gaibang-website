@@ -170,6 +170,16 @@ window.AIBENCH = {
       "dates": {
         "qingming": "2026-10-17"
       }
+    },
+    {
+      "slug": "step5preview",
+      "name": "Step-5-Preview",
+      "works": {
+        "dunhuang": "step5preview-dunhuang.html"
+      },
+      "dates": {
+        "dunhuang": "2026-10-17"
+      }
     }
   ]
 };

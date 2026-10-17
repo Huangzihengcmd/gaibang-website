@@ -4,13 +4,46 @@ import subprocess, json, base64, os, sys, tempfile, glob
 
 REPO = "Huangzihengcmd/gaibang-website"
 ROOT = r"F:\gaibang-website"
-WINCRED = r"C:\Users\Administrator\.workbuddy\binaries\PortableGit\versions\1.2.0\mingw64\bin\git-credential-wincred.exe"
+
+def find_wincred():
+    """自动定位 git-credential-wincred.exe（PortableGit 升级后路径会变，不再硬编码）"""
+    cands = []
+    env = os.environ.get("PATH", "")
+    git = None
+    # 1. 从 PATH 里的 git 反推
+    for p in env.split(os.pathsep):
+        g = os.path.join(p.strip('"'), "git.exe")
+        if os.path.exists(g):
+            git = g
+            break
+    if git:
+        base = os.path.dirname(os.path.dirname(git))  # .../mingw64
+        cands.append(os.path.join(base, "bin", "git-credential-wincred.exe"))
+    # 2. 常见安装位置全扫一遍
+    for root in [r"C:\Users\Administrator\.workbuddy\binaries\PortableGit",
+                 r"E:\WorkBuddy\resources\vendor\PortableGit",
+                 r"C:\Program Files\Git"]:
+        if os.path.isdir(root):
+            cands += glob.glob(os.path.join(root, "**", "git-credential-wincred.exe"), recursive=True)
+    # 3. 全盘兜底（只扫常见盘，限制深度避免太慢）
+    for c in cands:
+        if os.path.exists(c):
+            return c
+    return None
 
 def get_token():
-    r = subprocess.run([WINCRED, "get"], input="protocol=https\nhost=github.com\n\n",
-                       capture_output=True, text=True)
+    exe = find_wincred()
+    if not exe:
+        print("ERROR: 找不到 git-credential-wincred.exe")
+        return None, None
+    try:
+        r = subprocess.run([exe, "get"], input="protocol=https\nhost=github.com\n\n",
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except Exception as e:
+        print("ERROR: 调用凭据助手失败 %s" % e)
+        return None, None
     user = tok = None
-    for line in r.stdout.splitlines():
+    for line in (r.stdout or "").splitlines():
         if line.startswith("username="): user = line.split("=", 1)[1]
         if line.startswith("password="): tok = line.split("=", 1)[1]
     return user, tok
@@ -26,7 +59,8 @@ def glob_works():
 
 USER, TOK = get_token()
 if not TOK:
-    print("NO_TOKEN"); sys.exit(1)
+    print("NO_TOKEN - 无法从 Windows 凭据管理器读取 GitHub 凭据")
+    sys.exit(1)
 
 def api(method, path, data=None):
     url = "https://api.github.com/repos/%s%s" % (REPO, path)
