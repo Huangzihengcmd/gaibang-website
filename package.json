@@ -1,3 +1,18 @@
 {
-  "type": "module"
+  "name": "gaibang-website",
+  "version": "1.0.0",
+  "description": "丐帮官网（含 AI 能力检测子站）",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.9",
+    "node-json-db": "^2.1.0"
+  }
 }
