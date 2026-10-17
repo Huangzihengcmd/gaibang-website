@@ -104,13 +104,28 @@ window.onload = function() {
     loadAllNews();
 };
 
+// 镜像站（如 GitHub Pages）没有后端，同源接口会失败，
+// 此时回退到 Cloudflare 主站取数据
+const NEWS_SOURCES = [
+    `${API_URL}/api/news`,
+    'https://gaibang.pages.dev/api/news'
+];
+
 async function loadAllNews() {
     const container = document.getElementById('allNewsList');
+    let list = [];
+    for (const url of NEWS_SOURCES) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const result = await res.json();
+            list = result.data || [];
+            if (list.length > 0) break;
+        } catch (e) {
+            // 换下一个源继续试
+        }
+    }
     try {
-        const res = await fetch(`${API_URL}/api/news`);
-        const result = await res.json();
-        const list = result.data || [];
-
         if (list.length === 0) {
             container.innerHTML = '<p style="text-align:center;color:#999;background:rgba(0,0,0,0.6);padding:20px;border-radius:10px">暂无新闻</p>';
             return;
