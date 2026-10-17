@@ -27,6 +27,7 @@
     text-rendering:geometricPrecision;
     user-select:none;
     -webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;
   }
   #scene{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none;animation:scene-in 1.5s ease both;}
   @keyframes scene-in{from{opacity:0}to{opacity:1}}
@@ -567,7 +568,7 @@
   function addGlow(x, y, radius, color, alpha) {
     const sprite = GLOW[color] || GLOW.cyan;
     const previous = ctx.globalAlpha;
-    ctx.globalAlpha = alpha;
+    ctx.globalAlpha = previous * clamp(alpha, 0, 1);
     ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
     ctx.globalAlpha = previous;
   }
@@ -837,7 +838,7 @@
   function resizeCanvas() {
     cssW = Math.max(320, window.innerWidth || 320);
     cssH = Math.max(320, window.innerHeight || 320);
-    dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = Math.max(1, Math.round(cssW * dpr));
     canvas.height = Math.max(1, Math.round(cssH * dpr));
     canvas.style.width = cssW + 'px';
@@ -878,13 +879,9 @@
         grad.addColorStop(0.45, withAlpha(tint, 0.06));
         grad.addColorStop(1, withAlpha(tint, 0));
         g.fillStyle = grad;
-        g.save();
-        g.translate(cx, cy);
-        g.scale(1.8, 0.72);
         g.beginPath();
-        g.arc(0, 0, rad, 0, TAU);
+        g.ellipse(cx, cy, rad * 1.8, rad * 0.72, 0, 0, TAU);
         g.fill();
-        g.restore();
       }
       cloudSprites.push(c);
     }
