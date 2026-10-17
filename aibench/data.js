@@ -160,6 +160,16 @@ window.AIBENCH = {
         "watch": "2026-08-29",
         "qingming": "2026-08-29"
       }
+    },
+    {
+      "slug": "deekseekv41flash",
+      "name": "DeekSeek V4.1-flash",
+      "works": {
+        "qingming": "deekseekv41flash-qingming.html"
+      },
+      "dates": {
+        "qingming": "2026-10-17"
+      }
     }
   ]
 };
