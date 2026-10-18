@@ -138,7 +138,13 @@ delete = ["新建文本文档.txt", "start_https_silent.bat",
           # 早期手工复制的重名作品，已被脚本生成的规范命名取代
           "aibench/works/seed-billiards.html", "aibench/works/seed-maze.html",
           "aibench/works/seed-qingming.html", "aibench/works/seed-watch.html",
-          "aibench/works/qwen-watch.html"]
+          "aibench/works/qwen-watch.html",
+          # 早期云囊的 functions 文件，路径写错（../_utils.js 解析不了）会导致
+          # Cloudflare Pages 每次构建都失败，必须从仓库彻底删掉
+          "functions/_vault.js",
+          "functions/api/vault/create.js", "functions/api/vault/join.js",
+          "functions/api/vault/upload.js", "functions/api/vault/files.js",
+          "functions/api/vault/delete.js", "functions/api/vault/download.js"]
 for f in delete:
     if f in remote_paths:
         changes.append({"path": f, "mode": "100644", "type": "blob", "sha": None})
