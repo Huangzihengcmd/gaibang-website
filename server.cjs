@@ -204,7 +204,9 @@ app.delete("/api/admin/news/:id", async (req, res) => {
 });
 
 // ========== 百宝箱 ==========
-app.get("/api/box", async (req, res) => {
+app.get("/api/box", async (req, res, next) => {
+  // 带 v=1 的是云囊请求，交给后面的云囊路由处理
+  if (req.query.v === "1") return next();
   const boxData = await db.getData("/boxData");
   res.json({ code: 200, data: boxData });
 });
@@ -233,13 +235,9 @@ const norm = c => (c || "").toString().trim().toUpperCase();
 async function getVaults() { try { return await db.getData("/vaults"); } catch { return []; } }
 async function getVaultFiles() { try { return await db.getData("/vaultFiles"); } catch { return []; } }
 
-// 云囊兼容：国内站同时支持 /api/vault?a=xxx 和 /api/box?v=1&a=xxx（与 Cloudflare 版一致）
-app.use("/api/box", (req, res, next) => {
-  if (req.query.v === "1") { req.url = "/api/vault" + req.url.slice("/api/box".length); }
-  next();
-});
+const VAULT = ["/api/vault", "/api/box"];
 
-app.post("/api/vault", async (req, res) => {
+app.post(VAULT, async (req, res) => {
   const a = req.query.a;
   const { code, name, data, password, isTeam } = req.body || {};
 
@@ -298,7 +296,7 @@ app.post("/api/vault", async (req, res) => {
   res.json({ code: 400, msg: "未知操作" });
 });
 
-app.get("/api/vault", async (req, res) => {
+app.get(VAULT, async (req, res) => {
   const a = req.query.a;
   const code = norm(req.query.code);
 
