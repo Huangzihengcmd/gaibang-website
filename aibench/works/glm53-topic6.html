@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月光牌 · 木纹老式收音机</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(1200px 800px at 50% 18%, #3a2416, #140b06 72%);
+    font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    padding: 20px;
+  }
+
+  #radio {
+    position: relative;
+    width: 460px; max-width: 96vw;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 34px 70px rgba(0,0,0,.75), 0 4px 14px rgba(0,0,0,.6),
+                inset 0 0 0 3px rgba(0,0,0,.35), inset 0 0 0 5px rgba(255,190,110,.12);
+    user-select: none; -webkit-user-select: none;
+    display: flex; flex-direction: column;
+    padding: 14px 22px 18px;
+  }
+  #wood { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  #radio > *:not(#wood) { position: relative; z-index: 1; }
+
+  /* ---------- 顶部：铭牌 + 度盘 ---------- */
+  #brandRow { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; }
+  #brand {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 17px; letter-spacing: 3px; color: #3c2a10;
+    background: linear-gradient(180deg, #f3dc9a, #caa04f 55%, #a37a2e);
+    padding: 4px 14px; border-radius: 5px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 5px rgba(0,0,0,.5);
+    border: 1px solid #7a5a22;
+  }
+  #brand small { font-size: 10px; letter-spacing: 1px; color: #5c451a; }
+  #onair {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    color: #5a4a3a; border: 1.5px solid #6a5136; border-radius: 4px;
+    padding: 3px 8px; background: rgba(0,0,0,.25);
+    transition: all .25s;
+  }
+  #onair.lit { color: #ff6a4a; border-color: #ff6a4a; background: rgba(120,20,5,.35);
+    text-shadow: 0 0 8px rgba(255,90,50,.9); box-shadow: 0 0 12px rgba(255,80,40,.5); }
+
+  #dialWrap {
+    border-radius: 12px; overflow: hidden; position: relative;
+    border: 3px solid; border-image: linear-gradient(180deg, #e8c27a, #8a6a2f) 1;
+    box-shadow: 0 8px 18px rgba(0,0,0,.55), inset 0 0 18px rgba(0,0,0,.5);
+  }
+  #dial { display: block; width: 100%; height: 116px; }
+  #freqReadout {
+    position: absolute; right: 10px; top: 8px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 15px; font-weight: 700; color: #ffbe5c;
+    text-shadow: 0 0 10px rgba(255,150,60,.8);
+    background: rgba(20,8,2,.65); padding: 2px 9px; border-radius: 5px;
+    border: 1px solid rgba(255,170,80,.35);
+    transition: color .2s;
+  }
+  #freqReadout.locked { color: #b6ff7a; text-shadow: 0 0 10px rgba(140,255,90,.8); }
+
+  /* ---------- 中部：喇叭布 ---------- */
+  #grilleWrap {
+    flex: 1; min-height: 150px; margin: 14px 0;
+    border-radius: 14px; overflow: hidden;
+    border: 3px solid; border-image: linear-gradient(180deg, #e8c27a, #8a6a2f) 1;
+    box-shadow: 0 8px 18px rgba(0,0,0,.5), inset 0 0 26px rgba(0,0,0,.65);
+  }
+  #grille { display: block; width: 100%; height: 100%; }
+
+  /* ---------- 底部：旋钮 / 预设 / 电源 ---------- */
+  #controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+
+  #knobWrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #knob {
+    width: 122px; height: 122px; border-radius: 50%;
+    position: relative; cursor: grab; touch-action: none;
+    background: radial-gradient(circle at 35% 30%, #f3dfa8, #c9a055 45%, #8a6a2f 78%, #584318);
+    box-shadow: 0 10px 20px rgba(0,0,0,.65), inset 0 6px 10px rgba(255,255,255,.35),
+                inset 0 -8px 14px rgba(0,0,0,.45);
+  }
+  #knob:active { cursor: grabbing; }
+  #knobFace {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg,
+      rgba(40,20,5,.30) 0deg 3deg, transparent 3deg 12deg);
+  }
+  #knobMark {
+    position: absolute; top: 7px; left: 50%; margin-left: -2.5px;
+    width: 5px; height: 24px; border-radius: 3px;
+    background: linear-gradient(#ffe9c0, #a5241a);
+    box-shadow: 0 0 6px rgba(190,60,40,.85);
+  }
+  #knobCap {
+    position: absolute; left: 50%; top: 50%; width: 40px; height: 40px;
+    margin: -20px 0 0 -20px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #e9d29a, #a8833d 60%, #6d5222);
+    box-shadow: inset 0 2px 4px rgba(255,255,255,.5), inset 0 -3px 6px rgba(0,0,0,.4),
+                0 2px 5px rgba(0,0,0,.5);
+    pointer-events: none;
+  }
+  #knobWrap .lbl, #powerWrap .lbl, #presetWrap .lbl {
+    font-size: 11px; letter-spacing: 2px; color: #f0d8a8; text-shadow: 0 1px 2px #000;
+  }
+
+  #presetWrap { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  #presetWrap .btns { display: flex; flex-direction: column; gap: 8px; }
+  .preset {
+    width: 128px; height: 42px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px 0 12px;
+    border: 2px solid #7a5a26; cursor: pointer;
+    background: linear-gradient(180deg, #f6ecd4, #d9c9a2 60%, #bfae86);
+    box-shadow: 0 4px 8px rgba(0,0,0,.5), inset 0 1px 0 #fff;
+    color: #4a3212; font-weight: 700; font-size: 14px;
+    font-family: inherit; touch-action: manipulation;
+    -webkit-touch-callout: none; transition: transform .08s, filter .15s;
+  }
+  .preset:active { transform: translateY(2px); filter: brightness(.92); }
+  .preset .freq { font-size: 12px; font-weight: 700; color: #7a3a1a;
+    font-family: "Consolas", monospace; }
+  .preset .lamp { width: 9px; height: 9px; border-radius: 50%;
+    background: #4a3a20; box-shadow: inset 0 1px 2px #000; transition: all .2s; }
+  .preset.active .lamp { background: #ffec9e;
+    box-shadow: 0 0 9px rgba(255,220,120,.95), inset 0 0 2px rgba(150,90,0,.6); }
+  .preset.saved { animation: saveFlash .6s ease; }
+  @keyframes saveFlash {
+    0% { background: #bfe8a0; box-shadow: 0 0 18px rgba(140,255,120,.9); }
+    100% { background: linear-gradient(180deg, #f6ecd4, #d9c9a2 60%, #bfae86); }
+  }
+
+  #powerWrap { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  #powerSwitch {
+    width: 46px; height: 84px; border-radius: 24px; cursor: pointer;
+    background: linear-gradient(180deg, #2c1a0c, #4a3016);
+    border: 2px solid #8a6a2f; position: relative;
+    box-shadow: inset 0 3px 8px rgba(0,0,0,.7), 0 3px 7px rgba(0,0,0,.5);
+    transition: background .3s;
+  }
+  #powerSwitch .slider {
+    position: absolute; left: 4px; width: 34px; height: 34px; border-radius: 50%;
+    top: 44px; transition: top .18s ease;
+    background: radial-gradient(circle at 38% 32%, #f3dfa8, #b08a44 65%, #6d5222);
+    box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,255,255,.5);
+  }
+  #powerSwitch.on { background: linear-gradient(180deg, #3c2a14, #5c3f1c); }
+  #powerSwitch.on .slider { top: 6px; }
+  #led {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #3a1006; margin-top: 2px;
+    box-shadow: inset 0 1px 3px #000; transition: background .15s;
+  }
+
+  #hint {
+    margin-top: 12px; text-align: center;
+    font-size: 11px; color: #d8bc8a; letter-spacing: 1px;
+    text-shadow: 0 1px 2px #000; opacity: .9;
+  }
+  #hint b { color: #ffd98a; }
+</style>
+</head>
+<body>
+
+<div id="radio">
+  <canvas id="wood"></canvas>
+
+  <div id="brandRow">
+    <div id="brand">月光牌 <small>MOONLIGHT · MODEL 1958</small></div>
+    <div id="onair">ON AIR</div>
+  </div>
+
+  <div id="dialWrap">
+    <canvas id="dial"></canvas>
+    <div id="freqReadout">98.0 MHz</div>
+  </div>
+
+  <div id="grilleWrap"><canvas id="grille"></canvas></div>
+
+  <div id="controls">
+    <div id="knobWrap">
+      <div id="knob" tabindex="0" aria-label="调谐旋钮，可拖拽旋转，或用左右方向键调频">
+        <div id="knobFace"><div id="knobMark"></div></div>
+        <div id="knobCap"></div>
+      </div>
+      <div class="lbl">调谐 TUNING</div>
+    </div>
+
+    <div id="presetWrap">
+      <div class="btns">
+        <button class="preset" data-i="0"><span>P1</span><span class="freq">--</span><span class="lamp"></span></button>
+        <button class="preset" data-i="1"><span>P2</span><span class="freq">--</span><span class="lamp"></span></button>
+        <button class="preset" data-i="2"><span>P3</span><span class="freq">--</span><span class="lamp"></span></button>
+      </div>
+      <div class="lbl">预置电台 · 长按存台</div>
+    </div>
+
+    <div id="powerWrap">
+      <div id="powerSwitch" class="on"><div class="slider"></div></div>
+      <div class="lbl">电源</div>
+      <div id="led"></div>
+    </div>
+  </div>
+
+  <div id="hint">拖动旋钮调频 · <b>◀ ▶</b> 键微调（Shift 加速）· 点击预置键换台 · <b>长按</b>存台 · 空格开关机</div>
+</div>
+
+<script>
+'use strict';
+const TAU = Math.PI * 2;
+const F_MIN = 87.5, F_MAX = 108;
+const KNOB_SPAN = 280;            // 旋钮总旋转角度
+const PRESET_KEY = 'wooden-radio.presets.v1';
+const FREQ_KEY   = 'wooden-radio.freq.v1';
+
+/* ---------------- 电台数据 ---------------- */
+const STATIONS = [
+  { f: 91.5, name: '老歌',   wave: 'triangle', base: 220, beat: 0.30, peak: 0.42,
+    melody: [[0,1],[4,1],[7,1],[9,1],[7,2],[4,1],[2,1],[4,2],
+             [0,1],[2,1],[4,1],[7,2],[9,1],[12,2],[7,1],[4,1],[0,2],[null,2]] },
+  { f: 98.0, name: '爵士',   wave: 'sine',     base: 233, beat: 0.34, peak: 0.55,
+    melody: [[0,1],[3,1],[7,2],[10,1],[7,1],[3,2],[5,1],[7,1],[12,2],
+             [10,1],[7,1],[3,1],[5,2],[null,2]] },
+  { f: 104.8, name: '报时',  wave: 'square',   base: 523, beat: 0.38, peak: 0.22,
+    melody: [[0,1],[0,1],[0,1],[12,3],[0,1],[0,1],[12,3],[null,2]] },
+];
+
+/* ---------------- 状态 ---------------- */
+let freq = 98.0, displayFreq = 98.0, knobAngle = 0;
+let powerOn = true, sigStrength = 0;
+let presets = [91.5, 98.0, 104.8];
+
+try {
+  const saved = JSON.parse(localStorage.getItem(PRESET_KEY));
+  if (Array.isArray(saved) && saved.length === 3 &&
+      saved.every(v => typeof v === 'number' && v >= F_MIN && v <= F_MAX)) presets = saved;
+  const sf = parseFloat(localStorage.getItem(FREQ_KEY));
+  if (sf >= F_MIN && sf <= F_MAX) freq = sf;
+} catch (e) { /* 忽略损坏的存储 */ }
+displayFreq = freq;
+
+/* ---------------- DOM ---------------- */
+const $ = id => document.getElementById(id);
+const wood = $('wood'), dial = $('dial'), grille = $('grille');
+const knob = $('knob'), knobFace = $('knobFace');
+const readout = $('freqReadout'), onair = $('onair'), led = $('led');
+const powerSwitch = $('powerSwitch');
+const presetBtns = [...document.querySelectorAll('.preset')];
+
+function dprCanvas(c, w, h) {
+  const dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return g;
+}
+
+/* ---------------- 木材纹理 ---------------- */
+function drawWood() {
+  const w = $('radio').clientWidth, h = $('radio').clientHeight;
+  const g = dprCanvas(wood, w, h);
+  let seed = 20250101;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  g.fillStyle = '#6d4326'; g.fillRect(0, 0, w, h);
+  const planks = Math.max(4, Math.round(h / 110)), ph = h / planks;
+  for (let p = 0; p < planks; p++) {
+    const y0 = p * ph, tone = rnd() * 26 - 13;
+    g.fillStyle = `rgb(${125 + tone | 0},${79 + tone * 0.7 | 0},${42 + tone * 0.5 | 0})`;
+    g.fillRect(0, y0, w, ph);
+    for (let i = 0; i < 26; i++) {              // 木纹
+      const gy = y0 + rnd() * ph, phase = rnd() * 6, amp = 1.5 + rnd() * 3;
+      g.strokeStyle = rnd() < 0.55
+        ? `rgba(60,32,12,${0.05 + rnd() * 0.12})`
+        : `rgba(230,170,90,${0.03 + rnd() * 0.06})`;
+      g.lineWidth = 0.6 + rnd() * 1.6;
+      g.beginPath();
+      let x = -20, y = gy; g.moveTo(x, y);
+      while (x < w + 20) { x += 28 + rnd() * 40; y = gy + Math.sin(x * 0.02 + phase) * amp; g.lineTo(x, y); }
+      g.stroke();
+    }
+    if (rnd() < 0.75) {                          // 木节
+      const kx = 30 + rnd() * (w - 60), ky = y0 + ph * 0.3 + rnd() * ph * 0.4, rot = rnd() * 0.6 - 0.3;
+      for (let r = 7; r >= 1; r--) {
+        g.strokeStyle = `rgba(50,26,10,${0.06 + (7 - r) * 0.022})`; g.lineWidth = 1.3;
+        g.beginPath(); g.ellipse(kx, ky, r * 3.4, r * 1.9, rot, 0, TAU); g.stroke();
+      }
+      g.fillStyle = 'rgba(35,18,6,0.55)';
+      g.beginPath(); g.ellipse(kx, ky, 2.8, 1.7, rot, 0, TAU); g.fill();
+    }
+    g.strokeStyle = 'rgba(30,15,5,0.8)'; g.lineWidth = 2.4;      // 板缝
+    g.beginPath(); g.moveTo(0, y0 + 0.9); g.lineTo(w, y0 + 0.9); g.stroke();
+    g.strokeStyle = 'rgba(255,190,110,0.14)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, y0 + 2.8); g.lineTo(w, y0 + 2.8); g.stroke();
+  }
+  const v = g.createRadialGradient(w / 2, h * 0.35, w * 0.22, w / 2, h / 2, w * 0.8);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.5)');
+  g.fillStyle = v; g.fillRect(0, 0, w, h);
+}
+
+/* ---------------- 喇叭布 ---------------- */
+function drawGrille() {
+  const w = grille.parentElement.clientWidth - 6, h = grille.parentElement.clientHeight - 6;
+  const g = dprCanvas(grille, w, h);
+  g.fillStyle = '#170c05'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(212,160,90,0.11)'; g.lineWidth = 1;
+  for (let x = 3; x < w; x += 7) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let y = 3; y < h; y += 7) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  const sheen = g.createRadialGradient(w * 0.35, h * 0.25, 10, w * 0.4, h * 0.3, w * 0.75);
+  sheen.addColorStop(0, 'rgba(255,210,140,0.13)'); sheen.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = sheen; g.fillRect(0, 0, w, h);
+  const dark = g.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, w * 0.65);
+  dark.addColorStop(0, 'rgba(0,0,0,0)'); dark.addColorStop(1, 'rgba(0,0,0,0.55)');
+  g.fillStyle = dark; g.fillRect(0, 0, w, h);
+}
+
+/* ---------------- 度盘 ---------------- */
+function drawDial() {
+  const w = dial.clientWidth || 414, h = 116, pad = 34;
+  if (dial.width === 0) dprCanvas(dial, w, h);
+  const g = dial.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const lit = powerOn;
+  const xOf = f => pad + (f - 88) / 20 * (w - 2 * pad);
+
+  // 底色 + 琥珀背光
+  const bg = g.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, '#2c1a0d'); bg.addColorStop(1, '#221206');
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  const glowA = lit ? 0.32 + 0.5 * sigStrength : 0.05;
+  const bl = g.createRadialGradient(w / 2, h * 0.6, 20, w / 2, h * 0.6, w * 0.62);
+  bl.addColorStop(0, `rgba(255,178,84,${glowA})`); bl.addColorStop(1, 'rgba(255,150,60,0)');
+  g.fillStyle = bl; g.fillRect(0, 0, w, h);
+
+  g.textAlign = 'center';
+  g.fillStyle = lit ? 'rgba(240,214,150,0.95)' : 'rgba(240,214,150,0.35)';
+  g.font = 'bold 10px Georgia, serif';
+  g.fillText('月光牌 · FM 立体声 · 87.5 – 108 MHz', w / 2, 16);
+
+  // 刻度
+  for (let f = 88; f <= 108.001; f += 0.5) {
+    const x = xOf(f), major = Math.abs(f % 1) < 0.01, big = Math.abs(f % 2) < 0.01;
+    g.strokeStyle = lit ? `rgba(238,206,140,${major ? 0.95 : 0.5})` : 'rgba(238,206,140,0.28)';
+    g.lineWidth = major ? 1.6 : 1;
+    g.beginPath(); g.moveTo(x, h - 18); g.lineTo(x, h - 18 - (big ? 16 : major ? 11 : 6)); g.stroke();
+    if (big) {
+      g.fillStyle = lit ? '#f0d296' : 'rgba(240,210,150,0.35)';
+      g.font = 'bold 10px Georgia, serif';
+      g.fillText(f.toFixed(0), x, h - 22);
+    }
+  }
+  // 电台标记
+  for (const st of STATIONS) {
+    const x = xOf(st.f), near = Math.exp(-Math.pow((displayFreq - st.f) / 0.5, 2));
+    g.fillStyle = `rgba(255,${90 + 60 * (1 - near)},70,${lit ? 0.5 + 0.5 * near : 0.25})`;
+    g.beginPath(); g.arc(x, h - 42, 3 + near * 1.5, 0, TAU); g.fill();
+    if (near > 0.35) {
+      g.font = 'bold 9px "Microsoft YaHei", sans-serif';
+      g.fillStyle = `rgba(255,190,120,${near})`;
+      g.fillText(st.name, x, h - 50);
+    }
+  }
+  // 指针
+  const nx = xOf(Math.min(108, Math.max(88, displayFreq)));
+  g.save();
+  g.shadowColor = 'rgba(255,60,40,0.9)'; g.shadowBlur = lit ? 9 : 3;
+  g.strokeStyle = lit ? '#ff4632' : '#7c2a1e'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(nx, 6); g.lineTo(nx, h - 14); g.stroke();
+  g.fillStyle = g.strokeStyle;
+  g.beginPath(); g.moveTo(nx - 5, h - 14); g.lineTo(nx + 5, h - 14); g.lineTo(nx, h - 5); g.fill();
+  g.restore();
+  // 玻璃反光
+  const gl = g.createLinearGradient(0, 0, w, h);
+  gl.addColorStop(0, 'rgba(255,255,255,0.13)'); gl.addColorStop(0.4, 'rgba(255,255,255,0)');
+  g.fillStyle = gl; g.fillRect(0, 0, w, h);
+}
+
+/* ---------------- Web Audio ---------------- */
+let actx = null, master, analyser, noiseSrc, noiseGain, timeBuf;
+function signalAt(f) {
+  let s = 0;
+  for (const st of STATIONS) s = Math.max(s, Math.exp(-Math.pow((f - st.f) / 0.45, 2)));
+  return s;
+}
+
+function initAudio() {
+  if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  master = actx.createGain(); master.gain.value = 0;
+  analyser = actx.createAnalyser(); analyser.fftSize = 512;
+  timeBuf = new Uint8Array(analyser.fftSize);
+  master.connect(analyser); analyser.connect(actx.destination);
+  master.gain.setTargetAtTime(powerOn ? 0.9 : 0, actx.currentTime, 0.08);
+
+  // 白噪声（沙沙声）
+  const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  noiseSrc = actx.createBufferSource(); noiseSrc.buffer = buf; noiseSrc.loop = true;
+  const bp = actx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 1700; bp.Q.value = 0.55;
+  noiseGain = actx.createGain(); noiseGain.gain.value = 0;
+  noiseSrc.connect(bp); bp.connect(noiseGain); noiseGain.connect(master);
+  noiseSrc.start();
+
+  for (const st of STATIONS) {
+    st.gainNode = actx.createGain(); st.gainNode.gain.value = 0;
+    st.gainNode.connect(master);
+    st.i = 0; st.next = actx.currentTime + 0.1;
+  }
+  setInterval(scheduleStations, 90);
+}
+
+function scheduleStations() {
+  if (!actx) return;
+  const now = actx.currentTime;
+  for (const st of STATIONS) {
+    if (!powerOn) { st.next = Math.max(st.next, now + 0.1); continue; }
+    while (st.next < now + 0.45) {
+      const [n, beats] = st.melody[st.i % st.melody.length]; st.i++;
+      const t = st.next, dur = beats * st.beat;
+      st.next += dur;
+      if (n === null) continue;
+      const o = actx.createOscillator(); o.type = st.wave;
+      o.frequency.value = st.base * Math.pow(2, n / 12);
+      const lp = actx.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.value = st.wave === 'square' ? 1300 : 5000;
+      const gn = actx.createGain(); gn.gain.value = 0;
+      o.connect(lp); lp.connect(gn); gn.connect(st.gainNode);
+      gn.gain.setValueAtTime(0, t);
+      gn.gain.linearRampToValueAtTime(st.peak, t + 0.02);
+      gn.gain.setValueAtTime(st.peak, t + Math.max(0.03, dur * 0.55));
+      gn.gain.linearRampToValueAtTime(0.0001, t + dur * 0.95);
+      o.start(t); o.stop(t + dur);
+    }
+  }
+}
+
+function updateAudio(t) {
+  if (!actx) return;
+  const now = actx.currentTime;
+  const noiseTarget = powerOn ? 0.42 * Math.pow(1 - sigStrength, 1.8) + 0.02 : 0;
+  noiseGain.gain.setTargetAtTime(noiseTarget, now, 0.06);
+  noiseSrc.playbackRate.value = 0.85 + 0.3 * (0.5 + 0.5 * Math.sin(t * 0.0011)) ;
+  for (const st of STATIONS) {
+    const s = Math.exp(-Math.pow((displayFreq - st.f) / 0.45, 2));
+    st.gainNode.gain.setTargetAtTime(powerOn ? Math.pow(s, 1.4) * 0.95 : 0, now, 0.07);
+  }
+  // LED 随声音闪烁
+  analyser.getByteTimeDomainData(timeBuf);
+  let sum = 0;
+  for (let i = 0; i < timeBuf.length; i += 4) { const v = (timeBuf[i] - 128) / 128; sum += v * v; }
+  const rms = Math.sqrt(sum / (timeBuf.length / 4));
+  if (powerOn) {
+    led.style.background = `rgb(${170 + rms * 500 | 0},${40 + rms * 160 | 0},28)`;
+    led.style.boxShadow = `0 0 ${4 + rms * 26}px rgba(255,80,40,${0.45 + rms * 2})`;
+  } else {
+    led.style.background = '#3a1006'; led.style.boxShadow = 'inset 0 1px 3px #000';
+  }
+}
+
+/* ---------------- 频率 / 旋钮 ---------------- */
+const angleFromFreq = f => -KNOB_SPAN / 2 + (f - F_MIN) / (F_MAX - F_MIN) * KNOB_SPAN;
+const freqFromAngle = a => F_MIN + (a + KNOB_SPAN / 2) / KNOB_SPAN * (F_MAX - F_MIN);
+
+let saveTimer = null;
+function persistFreq() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(FREQ_KEY, freq); } catch (e) {} }, 300);
+}
+function applyAngle(a) {
+  knobAngle = Math.min(KNOB_SPAN / 2, Math.max(-KNOB_SPAN / 2, a));
+  freq = freqFromAngle(knobAngle);
+  knobFace.style.transform = `rotate(${knobAngle}deg)`;
+  persistFreq();
+}
+function setFreq(f) {
+  f = Math.min(F_MAX, Math.max(F_MIN, f));
+  applyAngle(angleFromFreq(f));
+  freq = f;
+}
+applyAngle(angleFromFreq(freq));
+
+// 旋钮拖拽（鼠标 + 触摸，Pointer Events 统一处理）
+let dragging = false, lastPointerAngle = 0;
+const pointerAngle = e => {
+  const r = knob.getBoundingClientRect();
+  return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+};
+knob.addEventListener('pointerdown', e => {
+  e.preventDefault(); initAudio();
+  dragging = true; lastPointerAngle = pointerAngle(e);
+  knob.setPointerCapture(e.pointerId);
+});
+knob.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const a = pointerAngle(e);
+  let d = a - lastPointerAngle;
+  if (d > 180) d -= 360; if (d < -180) d += 360;
+  applyAngle(knobAngle + d);
+  lastPointerAngle = a;
+});
+const endDrag = () => { dragging = false; };
+knob.addEventListener('pointerup', endDrag);
+knob.addEventListener('pointercancel', endDrag);
+
+/* ---------------- 键盘 ---------------- */
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    initAudio();
+    const dir = e.key === 'ArrowRight' ? 1 : -1;
+    setFreq(freq + dir * (e.shiftKey ? 1 : 0.1));
+    e.preventDefault();
+  } else if (e.key === ' ') {
+    togglePower(); e.preventDefault();
+  } else if (e.key === '1' || e.key === '2' || e.key === '3') {
+    initAudio(); recallPreset(+e.key - 1);
+  }
+});
+
+/* ---------------- 预置台 ---------------- */
+function renderPresets() {
+  presetBtns.forEach((b, i) => {
+    b.querySelector('.freq').textContent = presets[i].toFixed(1);
+    b.classList.toggle('active', powerOn && Math.abs(freq - presets[i]) < 0.25);
+  });
+}
+function recallPreset(i) { setFreq(presets[i]); renderPresets(); }
+function savePreset(i) {
+  presets[i] = Math.round(freq * 10) / 10;
+  try { localStorage.setItem(PRESET_KEY, JSON.stringify(presets)); } catch (e) {}
+  const b = presetBtns[i];
+  b.classList.remove('saved'); void b.offsetWidth; b.classList.add('saved');
+  renderPresets();
+}
+presetBtns.forEach((b, i) => {
+  let holdTimer = null, longPressed = false;
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio();
+    longPressed = false;
+    holdTimer = setTimeout(() => { longPressed = true; savePreset(i); if (navigator.vibrate) navigator.vibrate(30); }, 550);
+  });
+  const finish = () => {
+    clearTimeout(holdTimer);
+    if (!longPressed) recallPreset(i);
+  };
+  b.addEventListener('pointerup', finish);
+  b.addEventListener('pointercancel', () => clearTimeout(holdTimer));
+  b.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+/* ---------------- 电源 ---------------- */
+function togglePower() {
+  powerOn = !powerOn;
+  powerSwitch.classList.toggle('on', powerOn);
+  initAudio();
+  if (actx) master.gain.setTargetAtTime(powerOn ? 0.9 : 0, actx.currentTime, 0.08);
+  renderPresets();
+}
+powerSwitch.addEventListener('click', togglePower);
+
+/* ---------------- 主循环 ---------------- */
+function frame(t) {
+  displayFreq += (freq - displayFreq) * 0.18;
+  sigStrength = signalAt(displayFreq);
+  drawDial();
+  readout.textContent = displayFreq.toFixed(1) + ' MHz';
+  readout.classList.toggle('locked', powerOn && sigStrength > 0.7);
+  onair.classList.toggle('lit', powerOn && sigStrength > 0.6);
+  updateAudio(t);
+  renderPresets();
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- 启动 ---------------- */
+drawWood(); drawGrille(); drawDial(); renderPresets();
+window.addEventListener('resize', () => { drawWood(); drawGrille(); drawDial(); });
+document.addEventListener('pointerdown', () => initAudio(), { once: true });
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
