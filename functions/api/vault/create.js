@@ -1,7 +1,6 @@
 // 创建协作库（个人 / 团队）
-import { jsonResponse, handleOptions, parseBody } from "../../_utils.js";
+import { jsonResponse, handleOptions, parseBody, putJSON } from "../../_utils.js";
 import { genCode, norm, vaults } from "../../_vault.js";
-import { putJSON } from "../../_utils.js";
 
 export async function onRequestPost(context) {
   const { env } = context;
