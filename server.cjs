@@ -233,6 +233,12 @@ const norm = c => (c || "").toString().trim().toUpperCase();
 async function getVaults() { try { return await db.getData("/vaults"); } catch { return []; } }
 async function getVaultFiles() { try { return await db.getData("/vaultFiles"); } catch { return []; } }
 
+// 云囊兼容：国内站同时支持 /api/vault?a=xxx 和 /api/box?v=1&a=xxx（与 Cloudflare 版一致）
+app.use("/api/box", (req, res, next) => {
+  if (req.query.v === "1") { req.url = "/api/vault" + req.url.slice("/api/box".length); }
+  next();
+});
+
 app.post("/api/vault", async (req, res) => {
   const a = req.query.a;
   const { code, name, data, password, isTeam } = req.body || {};
