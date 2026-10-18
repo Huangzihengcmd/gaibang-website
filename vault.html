@@ -152,7 +152,7 @@ const $ = id => document.getElementById(id);
 
 // Cloudflare 版下载走 JSON 返回 base64；Express 版直接给文件流
 async function downloadFile(id, name) {
-  const url = "/api/vault/download?code=" + encodeURIComponent(CODE) + "&id=" + encodeURIComponent(id);
+  const url = "/api/vault?a=download&code=" + encodeURIComponent(CODE) + "&id=" + encodeURIComponent(id);
   try {
     const res = await fetch(url);
     const ct = res.headers.get("content-type") || "";
@@ -190,7 +190,7 @@ function showMsg(id, text, cls) {
 // 个人协作：一键生成
 async function quickCreate(kind) {
   showMsg("quickMsg", "正在创建…", "busy");
-  const r = await fetch("/api/vault/create", {
+  const r = await fetch("/api/vault?a=create", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "我的资料库", isTeam: false })
   }).then(r => r.json());
@@ -206,7 +206,7 @@ async function createTeam() {
   const code = $("teamCode").value.trim().toUpperCase();
   const password = $("teamPwd").value;
   showMsg("quickMsg", "正在创建…", "busy");
-  const r = await fetch("/api/vault/create", {
+  const r = await fetch("/api/vault?a=create", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, code, password, isTeam: true })
   }).then(r => r.json());
@@ -218,7 +218,7 @@ async function joinVault() {
   const password = $("pwd").value;
   if (!code) return showMsg("gateMsg", "请先输入协作码", "err");
   showMsg("gateMsg", "正在进入…", "busy");
-  const r = await fetch("/api/vault/join", {
+  const r = await fetch("/api/vault?a=join", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, password })
   }).then(r => r.json());
@@ -238,7 +238,7 @@ function enter(v) {
 async function loadFiles() {
   const box = $("list");
   box.innerHTML = '<div class="empty">加载中…</div>';
-  const r = await fetch("/api/vault/files?code=" + encodeURIComponent(CODE)).then(r => r.json());
+  const r = await fetch("/api/vault?a=files&code=" + encodeURIComponent(CODE)).then(r => r.json());
   if (r.code !== 200) { box.innerHTML = '<div class="empty">读取失败</div>'; return; }
   if (!r.data.length) { box.innerHTML = '<div class="empty">资料库还是空的，上传第一个文件吧</div>'; return; }
   box.innerHTML = r.data.map(f => {
@@ -259,7 +259,7 @@ function esc(s) {
 
 async function delFile(id) {
   if (!confirm("确定要删除这个文件吗？")) return;
-  const r = await fetch("/api/vault/delete", {
+  const r = await fetch("/api/vault?a=delete", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code: CODE, id })
   }).then(r => r.json());
@@ -280,7 +280,7 @@ async function uploadFiles(files) {
       rd.onerror = rej;
       rd.readAsDataURL(f);
     });
-    const r = await fetch("/api/vault/upload", {
+    const r = await fetch("/api/vault?a=upload", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: CODE, name: f.name, data: b64 })
     }).then(r => r.json());

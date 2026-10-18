@@ -42,6 +42,14 @@ window.AIBENCH = {
       "prompt": "请你做一个敦煌飞天粒子画\n\n网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。\n\n用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。"
     },
     {
+      "id": "topic6",
+      "name": "老式收音机调频台",
+      "en": "老式收音",
+      "sub": "未分类",
+      "grad": "radial-gradient(circle at 50% 30%, #5c1d2b 0%, #2e1017 55%, #100609 100%)",
+      "prompt": "做一个木纹老式收音机。旋钮可以拖拽或触摸旋转，频率随之变化；信号弱时有沙沙噪声，信号强时能听到电台音；支持存 3 个预设台，刷新后预设还在；支持键盘左右调频。音频必须用 Web Audio 程序合成，界面用 CSSCanvas 绘制。最终产物是一个 HTML 文件。\n\n验收点\n旋钮跟手，频率边界正确；噪声和电台音能切换；处理浏览器自动播放限制，用户点击后才出声；预设能存能读能删；手机触摸可调；单文件直接打开无外部请求。"
+    },
+    {
       "id": "qingming",
       "name": "赛博朋克清明上河图",
       "en": "CYBERPUNK SCROLL",
@@ -166,10 +174,12 @@ window.AIBENCH = {
       "name": "Step-5-Preview",
       "works": {
         "astra": "step5preview-astra.html",
+        "qingming": "step5preview-qingming.html",
         "dunhuang": "step5preview-dunhuang.html"
       },
       "dates": {
         "astra": "2026-10-18",
+        "qingming": "2026-10-18",
         "dunhuang": "2026-10-17"
       }
     },
