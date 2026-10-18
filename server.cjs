@@ -216,6 +216,119 @@ app.post("/api/admin/box", async (req, res) => {
   res.json({ code: 200, msg: "百宝箱已保存" });
 });
 
+// ========== 云囊（协作资料库）============
+const fs = require("fs");
+const VDIR = path.join(__dirname, "vault");
+if (!fs.existsSync(VDIR)) fs.mkdirSync(VDIR, { recursive: true });
+
+const MAX_FILE = 4 * 1024 * 1024; // 单文件 4MB
+
+function genCode(n = 8) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 去掉容易混淆的字符
+  let s = "";
+  for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+async function getVaults() { try { return await db.getData("/vaults"); } catch { return []; } }
+async function getVaultFiles() { try { return await db.getData("/vaultFiles"); } catch { return []; } }
+
+// 创建个人协作库 / 团队协作库
+app.post("/api/vault/create", async (req, res) => {
+  const { name, code, password, isTeam } = req.body || {};
+  const vaults = await getVaults();
+  let myCode = (code || "").toString().trim().toUpperCase();
+  if (!myCode) {
+    do { myCode = genCode(); } while (vaults.some(v => v.code === myCode));
+  }
+  if (!/^[A-Z0-9]{4,16}$/.test(myCode)) {
+    return res.json({ code: 400, msg: "协作码只能��� 4-16 位字母或数字" });
+  }
+  if (vaults.some(v => v.code === myCode)) {
+    return res.json({ code: 409, msg: "该协作码已存在，换一个" });
+  }
+  const item = {
+    code: myCode,
+    name: (name || (isTeam ? "团队资料库" : "我的资料库")).slice(0, 30),
+    password: password || "",
+    isTeam: !!isTeam,
+    createdAt: new Date().toISOString(),
+  };
+  await db.push("/vaults", [...vaults, item], true);
+  res.json({ code: 200, msg: "创建成功", data: item });
+});
+
+// 输入协作码加入
+app.post("/api/vault/join", async (req, res) => {
+  const { code, password } = req.body || {};
+  const vaults = await getVaults();
+  const v = vaults.find(x => x.code === (code || "").toString().trim().toUpperCase());
+  if (!v) return res.json({ code: 404, msg: "协作码不存在，请检查" });
+  if (v.password && v.password !== password) return res.json({ code: 403, msg: "访问密码不正确" });
+  res.json({ code: 200, msg: "已加入", data: v });
+});
+
+// 文件列表
+app.get("/api/vault/files", async (req, res) => {
+  const code = (req.query.code || "").toString().trim().toUpperCase();
+  const all = await getVaultFiles();
+  const list = all.filter(f => f.code === code).sort((a, b) => b.time.localeCompare(a.time));
+  res.json({ code: 200, data: list });
+});
+
+// 上传（base64，自动保存到服务器磁盘）
+app.post("/api/vault/upload", async (req, res) => {
+  const { code, name, data } = req.body || {};
+  const vaults = await getVaults();
+  const v = vaults.find(x => x.code === (code || "").toString().trim().toUpperCase());
+  if (!v) return res.json({ code: 404, msg: "协作码不存在" });
+
+  const b64 = (data || "").split(",").pop() || "";
+  if (!b64) return res.json({ code: 400, msg: "文件内容为空" });
+  const buf = Buffer.from(b64, "base64");
+  if (buf.length > MAX_FILE) return res.json({ code: 413, msg: "单个文件不能超过 4MB" });
+
+  const safe = path.basename(name || "file").replace(/[\\/:*?"<>|]/g, "_");
+  const dir = path.join(VDIR, v.code);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const id = Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+  fs.writeFileSync(path.join(dir, id + "_" + safe), buf);
+
+  const item = {
+    id, code: v.code, name: safe, size: buf.length,
+    ext: path.extname(safe) || "",
+    time: new Date().toISOString(),
+  };
+  const all = await getVaultFiles();
+  await db.push("/vaultFiles", [...all, item], true);
+  res.json({ code: 200, msg: "已自动保存", data: item });
+});
+
+// 下载
+app.get("/api/vault/download", async (req, res) => {
+  const { code, id } = req.query;
+  const all = await getVaultFiles();
+  const f = all.find(x => x.id === id && x.code === (code || "").toString().toUpperCase());
+  if (!f) return res.status(404).send("文件不存在");
+  const file = path.join(VDIR, f.code, f.id + "_" + f.name);
+  if (!fs.existsSync(file)) return res.status(404).send("文件已丢失");
+  res.setHeader("Content-Disposition",
+    "attachment; filename*=UTF-8''" + encodeURIComponent(f.name));
+  fs.createReadStream(file).pipe(res);
+});
+
+// 删除
+app.post("/api/vault/delete", async (req, res) => {
+  const { code, id } = req.body || {};
+  const all = await getVaultFiles();
+  const f = all.find(x => x.id === id && x.code === (code || "").toString().toUpperCase());
+  if (!f) return res.json({ code: 404, msg: "文件不存在" });
+  const file = path.join(VDIR, f.code, f.id + "_" + f.name);
+  if (fs.existsSync(file)) fs.unlinkSync(file);
+  await db.push("/vaultFiles", all.filter(x => x.id !== id), true);
+  res.json({ code: 200, msg: "已删除" });
+});
+
 // 启动
 app.listen(port, () => {
   console.log(`丐帮网站已启动：http://127.0.0.1:${port}`);
