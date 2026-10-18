@@ -184,6 +184,18 @@ window.AIBENCH = {
       }
     },
     {
+      "slug": "glm53",
+      "name": "GLM5.3",
+      "works": {
+        "topic6": "glm53-topic6.html",
+        "astra": "glm53-astra.html"
+      },
+      "dates": {
+        "topic6": "2026-10-18",
+        "astra": "2026-10-18"
+      }
+    },
+    {
       "slug": "deekseekv41flash",
       "name": "DeekSeek V4.1-flash",
       "works": {
@@ -191,16 +203,6 @@ window.AIBENCH = {
       },
       "dates": {
         "qingming": "2026-10-17"
-      }
-    },
-    {
-      "slug": "glm53",
-      "name": "GLM5.3",
-      "works": {
-        "topic6": "glm53-topic6.html"
-      },
-      "dates": {
-        "topic6": "2026-10-18"
       }
     }
   ]
