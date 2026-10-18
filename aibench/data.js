@@ -162,6 +162,18 @@ window.AIBENCH = {
       }
     },
     {
+      "slug": "step5preview",
+      "name": "Step-5-Preview",
+      "works": {
+        "astra": "step5preview-astra.html",
+        "dunhuang": "step5preview-dunhuang.html"
+      },
+      "dates": {
+        "astra": "2026-10-18",
+        "dunhuang": "2026-10-17"
+      }
+    },
+    {
       "slug": "deekseekv41flash",
       "name": "DeekSeek V4.1-flash",
       "works": {
@@ -169,16 +181,6 @@ window.AIBENCH = {
       },
       "dates": {
         "qingming": "2026-10-17"
-      }
-    },
-    {
-      "slug": "step5preview",
-      "name": "Step-5-Preview",
-      "works": {
-        "dunhuang": "step5preview-dunhuang.html"
-      },
-      "dates": {
-        "dunhuang": "2026-10-17"
       }
     }
   ]
