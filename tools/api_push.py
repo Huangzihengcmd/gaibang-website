@@ -57,6 +57,13 @@ def glob_works():
             out.append(rel)
     return out
 
+def glob_functions():
+    """自动收集 functions 目录下所有 Cloudflare Function 文件
+    （以前这里是硬编码列表，导致新增/修改的函数推不上去）"""
+    return [os.path.relpath(p, ROOT).replace("\\", "/")
+            for p in glob.glob(os.path.join(ROOT, "functions", "**", "*.js"), recursive=True)
+            if os.path.isfile(p)]
+
 USER, TOK = get_token()
 if not TOK:
     print("NO_TOKEN - 无法从 Windows 凭据管理器读取 GitHub 凭据")
@@ -110,7 +117,7 @@ upsert = [
     "tools/indexnow_submit.sh", "tools/make_fake_qrcode_svg.py",
     "tools/indexnow_retry.sh", "tools/indexnow_longrun.sh",
     "tools/push_retry.sh", "tools/indexnow_result.log", "tools/搜索引擎提交指引.md",
-] + glob_works()
+] + glob_works() + glob_functions()
 changes = []
 for f in upsert:
     p = os.path.join(ROOT, f)

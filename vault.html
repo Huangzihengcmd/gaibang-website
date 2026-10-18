@@ -131,7 +131,7 @@ input::placeholder { color: #666; }
       <div class="drop" id="drop" onclick="document.getElementById('picker').click()">
         <div class="icon">📦</div>
         <div class="t">点击选择文件，或把文件拖到这里</div>
-        <div class="s">上传后自动保存到服务器 · 单个文件不超过 4MB</div>
+        <div class="s">上传后自动保存到服务器 · 单个文件不超过 3MB</div>
       </div>
       <input type="file" id="picker" style="display:none" multiple>
       <div class="msg" id="upMsg"></div>
@@ -147,8 +147,34 @@ input::placeholder { color: #666; }
 </div>
 
 <script>
-let CODE = "", NAME = "";
+let CODE = "", NAME = "", IS_CF = false;
 const $ = id => document.getElementById(id);
+
+// Cloudflare 版下载走 JSON 返回 base64；Express 版直接给文件流
+async function downloadFile(id, name) {
+  const url = "/api/vault/download?code=" + encodeURIComponent(CODE) + "&id=" + encodeURIComponent(id);
+  try {
+    const res = await fetch(url);
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      const r = await res.json();
+      if (r.code !== 200) return alert(r.msg || "下载失败");
+      const bin = atob(r.data);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const blob = new Blob([arr]);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = r.name || name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } else {
+      window.open(url, "_blank");
+    }
+  } catch (e) {
+    window.open(url, "_blank");
+  }
+}
 
 function fmtSize(b) {
   if (b < 1024) return b + " B";
@@ -217,11 +243,10 @@ async function loadFiles() {
   if (!r.data.length) { box.innerHTML = '<div class="empty">资料库还是空的，上传第一个文件吧</div>'; return; }
   box.innerHTML = r.data.map(f => {
     const time = (f.time || "").replace("T", " ").slice(0, 16);
-    const url = "/api/vault/download?code=" + encodeURIComponent(CODE) + "&id=" + encodeURIComponent(f.id);
     return '<div class="bar">' +
       '<div class="info"><div class="nm">' + esc(f.name) + "</div>" +
       '<div class="mt">' + fmtSize(f.size) + " · " + time + "</div></div>" +
-      '<a class="dl" href="' + url + '">下载</a>' +
+      '<button class="dl" onclick="downloadFile(\'' + f.id + '\',\'' + esc(f.name) + '\')">下载</button>' +
       '<button class="dl" onclick="delFile(\'' + f.id + '\')">删除</button>' +
     "</div>";
   }).join("");
@@ -244,8 +269,8 @@ async function delFile(id) {
 
 async function uploadFiles(files) {
   for (const f of files) {
-    if (f.size > 4 * 1024 * 1024) {
-      showMsg("upMsg", f.name + " 超过 4MB，已跳过", "err");
+    if (f.size > 3 * 1024 * 1024) {
+      showMsg("upMsg", f.name + " 超过 3MB，已跳过", "err");
       continue;
     }
     showMsg("upMsg", "正在上传并保存：" + f.name, "busy");
