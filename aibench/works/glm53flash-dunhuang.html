@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>敦煌飞天粒子画 · GLM5.3-flash 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「敦煌飞天粒子画」题目下，GLM5.3-flash 的 AI 实作作品。题目要求：请你做一个敦煌飞天粒子画 网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。 用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/glm53flash-dunhuang.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="敦煌飞天粒子画 · GLM5.3-flash 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「敦煌飞天粒子画」题目下，GLM5.3-flash 的 AI 实作作品。题目要求：请你做一个敦煌飞天粒子画 网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。 用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/glm53flash-dunhuang.html" />
+<meta name="keywords" content="敦煌飞天粒子画,GLM5.3-flash,AI 实作,HTML 单文件,DUNHUANG FLYING APSARA" />
+<style>
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background: #0d0704;
+    font-family: "STKaiti", "KaiTi", "楷体", serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #stage { position: fixed; inset: 0; display: block; touch-action: none; cursor: crosshair; }
+
+  /* 壁画质感底纹 */
+  #vignette {
+    position: fixed; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(255,190,90,0.06), transparent 60%),
+      radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%);
+  }
+  #title {
+    position: fixed; top: 4vh; left: 0; right: 0; text-align: center;
+    color: rgba(232,180,102,0.85); letter-spacing: 0.6em; text-indent: 0.6em;
+    font-size: clamp(20px, 4vw, 34px); pointer-events: none;
+    text-shadow: 0 0 18px rgba(255,170,60,0.35);
+    transition: opacity 1s;
+  }
+  #hint {
+    position: fixed; bottom: 12vh; left: 0; right: 0; text-align: center;
+    color: rgba(210,160,95,0.55); font-size: clamp(12px, 2vw, 15px);
+    letter-spacing: 0.3em; pointer-events: none; transition: opacity 1s;
+  }
+
+  /* 控制栏 */
+  #ctrl {
+    position: fixed; bottom: 3.5vh; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; z-index: 5;
+  }
+  #ctrl button {
+    background: rgba(40,24,10,0.72); color: #e8b466;
+    border: 1px solid rgba(232,180,102,0.45); border-radius: 999px;
+    padding: 8px 20px; font-size: 14px; letter-spacing: 0.15em;
+    font-family: inherit; cursor: pointer; backdrop-filter: blur(4px);
+    transition: background .25s, transform .15s;
+  }
+  #ctrl button:hover { background: rgba(90,55,20,0.85); }
+  #ctrl button:active { transform: scale(0.94); }
+  @media (max-width: 600px) {
+    #ctrl button { padding: 10px 18px; font-size: 13px; }
+    #hint { bottom: 15vh; }
+  }
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="vignette"></div>
+<div id="title">敦 煌 飞 天</div>
+<div id="hint">移动指针，唤起飞天 · 静止片刻，尘光归位</div>
+<div id="ctrl">
+  <button id="btnPause">⏸ 暂停</button>
+  <button id="btnReplay">↺ 回放</button>
+  <button id="btnAuto">✦ 自动起舞</button>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   敦煌飞天粒子画
+   —— 飘带随指针游走，粒子散开又聚拢，如壁画苏醒
+   ============================================================ */
+
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ---------------- 状态 ---------------- */
+const mouse = { x: W * 0.5, y: H * 0.55, px: 0, py: 0, speed: 0, active: false };
+let paused = false;
+let autoDance = true;          // 无人操作时自动起舞
+let lastInteract = 0;
+let frameCount = 0;
+let recorder = null;           // 回放记录器
+
+/* ---------------- 飘带轨迹 ---------------- */
+const TRAIL_MAX = 46;
+const trail = [];             // {x,y,t:时间戳}
+const smooth = { x: mouse.x, y: mouse.y };   // 缓动跟随点
+
+function pushTrail(x, y) {
+  const t = performance.now();
+  const last = trail[trail.length - 1];
+  if (last && Math.hypot(x - last.x, y - last.y) < 1.2 && t - last.t < 40) return;
+  trail.push({ x, y, t });
+  if (trail.length > TRAIL_MAX) trail.shift();
+}
+
+/* 老点淡出：超过寿命的点逐渐收缩，飘带便有“尾梢消散”之感 */
+function trimTrail(now) {
+  const LIFE = 1400;
+  while (trail.length && now - trail[0].t > LIFE) trail.shift();
+}
+
+/* Catmull-Rom 采样：把离散轨迹点变成平滑曲线上的连续位置 */
+function trailPoint(u) {   // u ∈ [0,1]
+  const pts = trail;
+  if (pts.length === 0) return { x: smooth.x, y: smooth.y };
+  if (pts.length < 3) { const p = pts[pts.length - 1]; return { x: p.x, y: p.y }; }
+  const f = u * (pts.length - 1);
+  const i = Math.min(Math.floor(f), pts.length - 2);
+  const t = f - i;
+  const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
+  const t2 = t * t, t3 = t2 * t;
+  return {
+    x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+    y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+  };
+}
+
+/* ---------------- 粒子系统 ---------------- */
+/* 敦煌配色：石青、石绿、朱砂、土红、鎏金 */
+const PALETTE = [
+  [232, 180, 102],   // 鎏金
+  [255, 196, 110],   // 暖金
+  [120, 170, 200],   // 石青
+  [110, 185, 160],   // 石绿
+  [214, 92, 70],     // 朱砂
+  [180, 110, 80]     // 土红
+];
+
+const P_COUNT = Math.min(900, Math.max(320, Math.floor(window.innerWidth * window.innerHeight / 2200)));
+const particles = [];
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+function makeParticle(i) {
+  const u = Math.random();                       // 挂在飘带上的位置
+  const ang = rand(0, Math.PI * 2);
+  const r = Math.pow(Math.random(), 0.6);        // 偏向近带分布
+  const c = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+  return {
+    u,
+    ox: Math.cos(ang) * r * 46,                  // 相对飘带的静止偏移
+    oy: Math.sin(ang) * r * 46,
+    wob: rand(0, Math.PI * 2),                   // 各自的飘动相位
+    wobSpd: rand(0.6, 1.8),
+    size: rand(0.7, 2.6) * (r < 0.35 ? 1.4 : 1),
+    x: rand(0, W), y: rand(0, H),                // 初始散落，开场即“聚拢”
+    vx: 0, vy: 0,
+    col: c,
+    alpha: rand(0.35, 0.95),
+    scat: 0                                      // 散开能量 0~1
+  };
+}
+for (let i = 0; i < P_COUNT; i++) particles.push(makeParticle(i));
+
+/* 环境浮尘：让画面在静止时也“活着” */
+const dust = [];
+for (let i = 0; i < 90; i++) dust.push({
+  x: rand(0, W), y: rand(0, H), r: rand(0.4, 1.4),
+  vx: rand(-0.08, 0.08), vy: rand(-0.05, -0.18), a: rand(0.05, 0.22), ph: rand(0, 6.28)
+});
+
+function updateParticles(now, dt) {
+  const speedK = Math.min(mouse.speed / 26, 1);          // 指针速度 → 散开力度
+  const time = now * 0.001;
+
+  for (const p of particles) {
+    /* 目标点 = 飘带上对应位置 + 自身偏移 + 呼吸飘动 */
+    const base = trailPoint(p.u);
+    p.wob += p.wobSpd * dt;
+    const wobAmp = 6 + 10 * Math.sin(time * 0.7 + p.u * 5);
+    const tx = base.x + p.ox + Math.cos(p.wob) * wobAmp;
+    const ty = base.y + p.oy + Math.sin(p.wob * 1.3) * wobAmp * 0.8;
+
+    /* 指针移动越快，粒子越被“吹”离飘带 */
+    p.scat += (speedK - p.scat) * 0.06;
+    const sc = p.scat;
+
+    /* 弹簧回归 + 惯性 */
+    const k = 0.028 + p.u * 0.01;          // 带尾更松
+    const damp = 0.90;
+    p.vx += (tx - p.x) * k;
+    p.vy += (ty - p.y) * k;
+
+    /* 散开风场：沿垂直于指针运动方向吹开 */
+    if (sc > 0.02) {
+      const ms = Math.max(mouse.speed, 0.001);
+      const dxn = (mouse.x - mouse.px) / ms, dyn = (mouse.y - mouse.py) / ms;
+      const side = (p.u * 13 % 1) > 0.5 ? 1 : -1;
+      p.vx += (-dyn * side) * sc * 2.4 + dxn * sc * 0.6;
+      p.vy += ( dxn * side) * sc * 2.4 + dyn * sc * 0.6;
+    }
+
+    p.vx *= damp; p.vy *= damp;
+    p.x += p.vx; p.y += p.vy;
+  }
+}
+
+/* ---------------- 自动起舞：无人操作时的既定舞步 ---------------- */
+function autoPath(now) {
+  const t = now * 0.001;
+  /* 多重正弦叠加，模拟飞天折转回旋的 S 形游走 */
+  const x = W * 0.5 + Math.sin(t * 0.55) * W * 0.32
+                   + Math.sin(t * 1.35 + 1.7) * W * 0.10;
+  const y = H * 0.42 + Math.sin(t * 0.9 + 0.6) * H * 0.20
+                     + Math.cos(t * 0.42) * H * 0.14;
+  return { x, y };
+}
+
+/* ---------------- 飘带渲染 ---------------- */
+function drawRibbon(now) {
+  if (trail.length < 3) return;
+  const time = now * 0.001;
+
+  /* 采样成平滑折线 */
+  const SAMPLES = Math.min(120, trail.length * 3);
+  const pts = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const u = i / SAMPLES;
+    pts.push(trailPoint(u));
+  }
+
+  /* 三层描边：外层柔光晕 → 中层主带 → 内芯高光 */
+  const layers = [
+    { w: u => 26 * Math.sin(u * Math.PI) ** 0.8 + 2, col: "rgba(255,170,70,0.06)" },
+    { w: u => 12 * Math.sin(u * Math.PI) ** 0.8 + 1, col: "rgba(240,160,80,0.30)" },
+    { w: u => 4.5 * Math.sin(u * Math.PI) ** 0.9 + 0.4, col: "rgba(255,225,170,0.85)" }
+  ];
+
+  /* 带头位置一抹亮色（飞天手持的“光”），随时间呼吸 */
+  const head = trailPoint(1);
+
+  for (const L of layers) {
+    /* 用宽度渐变的分段小线段绘制，模拟飘带宽窄变化 */
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (let i = 1; i < pts.length; i++) {
+      const u = i / pts.length;
+      const fade = Math.min(1, u * 6);           // 尾梢自然出现
+      ctx.strokeStyle = L.col;
+      ctx.globalAlpha = fade * (0.85 + 0.15 * Math.sin(time * 2 + u * 9));
+      ctx.lineWidth = L.w(u);
+      ctx.beginPath();
+      ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+      ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  /* 带头光点 */
+  const glowR = 10 + 4 * Math.sin(time * 3);
+  const g = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, glowR * 3);
+  g.addColorStop(0, "rgba(255,240,200,0.9)");
+  g.addColorStop(0.4, "rgba(255,190,100,0.35)");
+  g.addColorStop(1, "rgba(255,190,100,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(head.x, head.y, glowR * 3, 0, 6.283); ctx.fill();
+}
+
+/* ---------------- 粒子渲染 ---------------- */
+function drawParticles(now) {
+  const time = now * 0.001;
+  ctx.globalCompositeOperation = "lighter";
+  for (const p of particles) {
+    const tw = 0.75 + 0.25 * Math.sin(time * 3 + p.wob * 2);   // 闪烁
+    const a = p.alpha * tw;
+    ctx.fillStyle = `rgba(${p.col[0]},${p.col[1]},${p.col[2]},${a})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, 6.283);
+    ctx.fill();
+  }
+  /* 浮尘 */
+  for (const d of dust) {
+    d.x += d.vx; d.y += d.vy;
+    if (d.y < -5) { d.y = H + 5; d.x = rand(0, W); }
+    if (d.x < -5) d.x = W + 5; else if (d.x > W + 5) d.x = -5;
+    const a = d.a * (0.6 + 0.4 * Math.sin(time + d.ph));
+    ctx.fillStyle = `rgba(255,210,150,${a})`;
+    ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.283); ctx.fill();
+  }
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ---------------- 指针 / 触摸 ---------------- */
+function onPoint(x, y) {
+  mouse.px = mouse.x; mouse.py = mouse.y;
+  mouse.x = x; mouse.y = y;
+  const d = Math.hypot(x - mouse.px, y - mouse.py);
+  mouse.speed = mouse.speed * 0.7 + d * 0.3;
+  mouse.active = true;
+  lastInteract = performance.now();
+  pushTrail(x, y);
+  if (autoDance) setAuto(false);
+  fadeHint();
+}
+window.addEventListener("mousemove", e => onPoint(e.clientX, e.clientY));
+window.addEventListener("mousedown", e => onPoint(e.clientX, e.clientY));
+window.addEventListener("touchstart", e => {
+  const t = e.touches[0]; onPoint(t.clientX, t.clientY);
+}, { passive: true });
+window.addEventListener("touchmove", e => {
+  const t = e.touches[0]; onPoint(t.clientX, t.clientY);
+  e.preventDefault();
+}, { passive: false });
+
+/* 惯性拖尾：指针停下后飘带继续缓缓游走收尾 */
+function inertiaAndAuto(now) {
+  if (!mouse.active) return;
+  const idle = now - lastInteract;
+  if (idle > 3800 && !autoDance) setAuto(true);
+  if (autoDance) {
+    const p = autoPath(now);
+    mouse.px = mouse.x; mouse.py = mouse.y;
+    mouse.x += (p.x - mouse.x) * 0.02;
+    mouse.y += (p.y - mouse.y) * 0.02;
+    mouse.speed = mouse.speed * 0.7 + Math.hypot(mouse.x - mouse.px, mouse.y - mouse.py) * 0.3;
+    pushTrail(mouse.x, mouse.y);
+  }
+}
+
+/* ---------------- 控制按钮 ---------------- */
+const btnPause = document.getElementById("btnPause");
+const btnReplay = document.getElementById("btnReplay");
+const btnAuto = document.getElementById("btnAuto");
+const hint = document.getElementById("hint");
+
+function setAuto(v) {
+  autoDance = v;
+  btnAuto.textContent = v ? "✦ 自动起舞中" : "✦ 自动起舞";
+  btnAuto.style.borderColor = v ? "rgba(255,210,130,0.9)" : "";
+}
+btnAuto.addEventListener("click", () => setAuto(!autoDance));
+
+btnPause.addEventListener("click", () => {
+  paused = !paused;
+  btnPause.textContent = paused ? "▶ 继续" : "⏸ 暂停";
+});
+
+/* 回放：清空轨迹与散开状态，粒子从四散重新聚拢成带 */
+btnReplay.addEventListener("click", () => {
+  trail.length = 0;
+  for (const p of particles) {
+    p.x = rand(0, W); p.y = rand(0, H);
+    p.vx = rand(-2, 2); p.vy = rand(-2, 2);
+    p.scat = 1;
+  }
+  mouse.speed = 0;
+  lastInteract = performance.now() - 3800;   // 稍后自动回到自动起舞
+});
+
+let hintFaded = false;
+function fadeHint() {
+  if (hintFaded) return;
+  hintFaded = true;
+  hint.style.opacity = "0";
+  setTimeout(() => hint.remove(), 1200);
+}
+
+/* ---------------- 主循环 ---------------- */
+let lastT = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (paused) return;                 // 暂停：冻结画面，保留最后一帧
+  let dt = Math.min((now - lastT) / 1000, 0.05);
+  lastT = now;
+  frameCount++;
+
+  /* 底色拖影：淡淡覆盖上一帧，形成流光余韵 */
+  ctx.fillStyle = "rgba(13,7,4,0.28)";
+  ctx.fillRect(0, 0, W, H);
+
+  inertiaAndAuto(now);
+  trimTrail(now);
+  updateParticles(now, dt);
+  drawRibbon(now);
+  drawParticles(now);
+}
+requestAnimationFrame(loop);
+</script>
+
+<details class="gb-seo">
+<summary>本页说明 · 敦煌飞天粒子画 · GLM5.3-flash</summary>
+<div class="gb-seo-body">
+<h1>敦煌飞天粒子画 — GLM5.3-flash 的实现</h1>
+<p><b>题目</b>：请你做一个敦煌飞天粒子画
+
+网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。
+
+用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。</p>
+<p><b>模型</b>：GLM5.3-flash　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：<a href="https://gaibang.pages.dev/aibench/works/spacebunny-dunhuang.html" rel="nofollow">Space bunny</a> <a href="https://gaibang.pages.dev/aibench/works/step5preview-dunhuang.html" rel="nofollow">Step-5-Preview</a> <a href="https://gaibang.pages.dev/aibench/works/kimik3-dunhuang.html" rel="nofollow">Kimi K3</a></p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-dunhuang.html">本题对照页</a></p>
+</div>
+</details>
+</body>
+</html>

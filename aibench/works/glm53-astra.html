@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Astra 星域粒子 · GLM5.3 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「Astra 星域粒子」题目下，GLM5.3 的 AI 实作作品。题目要求：OpenAI 的 GPT-6 Astra 页面（https://openai.com/index/gpt-6-astra/）的首页和中间，有一个很酷炫的动态效果：鼠标滚动的时候粒子可以聚拢和散开，聚拢之后是一个特定的图形… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/glm53-astra.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="Astra 星域粒子 · GLM5.3 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「Astra 星域粒子」题目下，GLM5.3 的 AI 实作作品。题目要求：OpenAI 的 GPT-6 Astra 页面（https://openai.com/index/gpt-6-astra/）的首页和中间，有一个很酷炫的动态效果：鼠标滚动的时候粒子可以聚拢和散开，聚拢之后是一个特定的图形… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/glm53-astra.html" />
+<meta name="keywords" content="Astra 星域粒子,GLM5.3,AI 实作,HTML 单文件,ASTRA PARTICLES" />
+<style>
+  :root{
+    --fg:#e8edf6; --fg-dim:#9aa7bd; --accent:#7fd4ff; --accent2:#b28dff;
+    --glass:rgba(10,14,24,.55); --line:rgba(160,190,255,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:auto}
+  body{
+    background:#04060c; color:var(--fg);
+    font-family:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  ::selection{background:rgba(127,212,255,.25)}
+
+  /* ---------- WebGL 画布 ---------- */
+  #gl{position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block}
+
+  /* ---------- 顶部导航 ---------- */
+  .nav{
+    position:fixed; top:0; left:0; right:0; z-index:20;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:22px clamp(20px,4vw,56px);
+    pointer-events:none; user-select:none;
+  }
+  .nav .brand{display:flex; align-items:center; gap:10px; font-size:13px; letter-spacing:.22em; color:var(--fg-dim)}
+  .nav .brand .logo-dot{
+    width:22px;height:22px;border-radius:50%;
+    background:conic-gradient(from 210deg,#7fd4ff,#b28dff,#ffffff,#7fd4ff);
+    filter:blur(.2px); box-shadow:0 0 14px rgba(127,212,255,.55);
+  }
+  .nav .tag{font-size:11px; letter-spacing:.18em; color:var(--fg-dim); opacity:.75}
+
+  /* ---------- 滚动内容 ---------- */
+  main{position:relative; z-index:5}
+  section{position:relative}
+
+  /* Hero */
+  #hero{
+    height:100vh; min-height:560px;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    text-align:center; user-select:none; pointer-events:none;
+  }
+  #hero .kicker{
+    font-size:12px; letter-spacing:.5em; text-indent:.5em; color:var(--accent);
+    opacity:.85; margin-bottom:26px; text-transform:uppercase;
+  }
+  #hero h1{
+    font-size:clamp(56px,11vw,150px); font-weight:800; line-height:1.02;
+    letter-spacing:-.02em;
+    background:linear-gradient(180deg,#ffffff 30%,#a9c8ff 75%,#8f9bd8);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 60px rgba(127,180,255,.18);
+  }
+  #hero h1 em{font-style:italic; font-weight:600}
+  #hero .sub{
+    margin-top:30px; font-size:clamp(14px,1.6vw,17px); color:var(--fg-dim);
+    letter-spacing:.12em;
+  }
+  #hero .scroll-hint{
+    position:absolute; bottom:34px; font-size:13px; color:var(--fg-dim);
+    letter-spacing:.3em; animation:bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(8px);opacity:1}}
+
+  /* 聚拢舞台：长滚动区，进度 0→1 驱动粒子 */
+  #stage{height:340vh; user-select:none}
+  .stage-copy{
+    position:sticky; top:0; height:100vh;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    text-align:center; pointer-events:none; opacity:0;
+    padding:0 24px;
+  }
+  .stage-copy h2{
+    font-size:clamp(30px,5vw,64px); font-weight:700; letter-spacing:.04em;
+    text-shadow:0 0 40px rgba(127,212,255,.25);
+  }
+  .stage-copy h2.big{
+    font-size:clamp(64px,13vw,190px); font-weight:800; letter-spacing:.06em;
+    background:linear-gradient(180deg,#ffffff,#9fc4ff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .stage-copy p{
+    margin-top:20px; font-size:clamp(13px,1.5vw,16px); color:var(--fg-dim);
+    letter-spacing:.22em; text-indent:.22em;
+  }
+
+  /* 尾部说明 */
+  #outro{
+    padding:16vh clamp(20px,6vw,80px) 10vh;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:18px; max-width:1280px; margin:0 auto;
+  }
+  .card{
+    background:var(--glass); border:1px solid var(--line); border-radius:18px;
+    padding:30px 28px; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  }
+  .card h3{font-size:15px; letter-spacing:.14em; color:var(--accent); margin-bottom:14px}
+  .card p{font-size:13.5px; line-height:1.9; color:var(--fg-dim)}
+  .card p b{color:var(--fg); font-weight:600}
+  footer{
+    text-align:center; padding:40px 20px 60px;
+    color:#5b6780; font-size:12px; letter-spacing:.14em; line-height:2;
+  }
+
+  /* ---------- HUD 控制面板 ---------- */
+  #hud{
+    position:fixed; left:18px; bottom:18px; z-index:30;
+    background:var(--glass); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px 12px; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    width:236px; user-select:none;
+  }
+  #hud .hud-title{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:11px; letter-spacing:.18em; color:var(--fg-dim); margin-bottom:10px;
+  }
+  #hud .hud-title .live{display:flex; align-items:center; gap:6px}
+  #hud .hud-title .live i{
+    width:6px;height:6px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 8px var(--accent); animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  .bar-wrap{height:3px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden}
+  #bar{height:100%; width:0%; border-radius:2px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    box-shadow:0 0 10px rgba(127,212,255,.6)}
+  .hud-label{font-size:10px; letter-spacing:.16em; color:#5b6780; margin:12px 0 7px}
+  .btns{display:flex; flex-wrap:wrap; gap:6px}
+  .shape-btn{
+    appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.04);
+    color:var(--fg-dim); font:600 11px/1 inherit; letter-spacing:.08em;
+    padding:7px 10px; border-radius:8px; cursor:pointer; transition:all .2s;
+  }
+  .shape-btn:hover{border-color:rgba(127,212,255,.5); color:var(--fg)}
+  .shape-btn.active{
+    background:rgba(127,212,255,.12); border-color:rgba(127,212,255,.65); color:var(--accent);
+    box-shadow:0 0 12px rgba(127,212,255,.15) inset;
+  }
+  .hud-tip{margin-top:11px; font-size:10.5px; color:#5b6780; letter-spacing:.06em; line-height:1.7}
+  .hud-tip b{color:#8fa0c0; font-weight:600}
+
+  @media (max-width:640px){
+    #hud{left:12px; bottom:12px; width:200px; padding:11px 12px 10px}
+    .hud-tip{display:none}
+  }
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<header class="nav">
+  <div class="brand"><span class="logo-dot"></span>OPENAI</div>
+  <div class="tag">GPT-6 ASTRA · 效果复刻演示（非官方）</div>
+</header>
+
+<main>
+  <!-- 首屏：散开的星空 -->
+  <section id="hero">
+    <p class="kicker">Particle Morph Effect</p>
+    <h1>GPT-6 <em>Astra</em></h1>
+    <p class="sub">向下滚动 —— 看满天星辰聚合成形</p>
+    <div class="scroll-hint">SCROLL ▾</div>
+  </section>
+
+  <!-- 聚拢舞台：此区块的滚动进度 0→1 驱动粒子聚拢，回滚则散开 -->
+  <section id="stage">
+    <div class="stage-copy" data-from="0.22" data-to="0.58">
+      <h2>从星辰，到智能</h2>
+      <p>数万颗粒子正听候你的召唤</p>
+    </div>
+    <div class="stage-copy" data-from="0.68" data-to="1.02">
+      <h2 class="big">ASTRA</h2>
+      <p>聚拢 · 成形 · 呼吸 —— 移动鼠标，触碰它的边界</p>
+    </div>
+  </section>
+
+  <!-- 尾部说明 -->
+  <section id="outro">
+    <div class="card">
+      <h3>01 · 滚动驱动 MORPH</h3>
+      <p>粒子持有<b>散布坐标</b>与<b>图形坐标</b>两份位置，滚动进度作为插值权重在
+      GPU 顶点着色器中实时混合，并在中途叠加<b>切向螺旋偏移</b>，形成漩涡般的聚拢轨迹；
+      回滚页面即反向散开为星空。</p>
+    </div>
+    <div class="card">
+      <h3>02 · 鼠标力场交互</h3>
+      <p>鼠标位置被反投影为<b>三维世界坐标</b>，粒子按距离的高斯衰减被推开；
+      推力强度由鼠标<b>速度脉冲</b>驱动，并经过一个欠阻尼弹簧回落——划过时炸开，
+      停下后带着一点弹性归位。</p>
+    </div>
+    <div class="card">
+      <h3>03 · 星空质感</h3>
+      <p>每颗粒子拥有独立<b>尺寸、闪烁相位、聚拢延迟与色相</b>；18% 的「星尘」粒子
+      永不聚拢，持续在背景中明灭。加法混合 + 软边圆形点精灵 + 深度渐隐，
+      构成近大远小的层次感。</p>
+    </div>
+  </section>
+
+  <footer>
+    本页面为 OpenAI GPT-6 Astra 页面粒子动效的独立复刻演示 · 仅供学习交流<br/>
+    WebGL · 单文件实现 · 粒子插值 / 力场均在 GPU 端完成
+  </footer>
+</main>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-title">
+    <span class="live"><i></i> PARTICLES</span>
+    <span id="pcount">—</span>
+  </div>
+  <div class="bar-wrap"><div id="bar"></div></div>
+  <div class="hud-label">聚拢图形 TARGET</div>
+  <div class="btns">
+    <button class="shape-btn active" data-shape="knot">✦ 花结</button>
+    <button class="shape-btn" data-shape="astra">ASTRA</button>
+    <button class="shape-btn" data-shape="gpt6">GPT-6</button>
+    <button class="shape-btn" data-shape="ring">星环</button>
+  </div>
+  <div class="hud-tip"><b>滚动</b> → 聚拢 / 散开 &nbsp;·&nbsp; <b>鼠标划过</b> → 扰动粒子</div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+/* ============================================================
+ * 可调参数（对照原效果微调用）
+ * ========================================================== */
+const CONFIG = {
+  countMax: 26000,      // 桌面最大粒子数
+  countMin: 9000,
+  starFrac: 0.18,       // 星尘比例（永不聚拢的背景星点）
+  swirlAmp: 0.9,        // 聚拢螺旋强度
+  pushRadius: 0.35,     // 鼠标斥力衰减半径²（高斯）
+  pushBase: 0.5,        // 悬停基础斥力
+  pushAmp: 0.55,        // 推开位移幅度
+  stageLen: 340,        // 聚拢区滚动长度（vh）
+};
+
+/* ---------- 基础 ---------- */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, alpha:false, powerPreference:'high-performance' });
+renderer.setClearColor(0x04060c, 1);
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 60);
+camera.position.set(0, 0, 3.5);
+
+/* ---------- 粒子数量（自适应） ---------- */
+let COUNT = Math.round(Math.min(CONFIG.countMax, Math.max(CONFIG.countMin, (innerWidth*innerHeight)/45)));
+if (matchMedia('(pointer:coarse)').matches) COUNT = Math.min(COUNT, 12000);
+const NS = Math.floor(COUNT * CONFIG.starFrac);   // 星尘数
+const NM = COUNT - NS;                            // 参与聚拢的主体数
+document.getElementById('pcount').textContent = COUNT.toLocaleString();
+
+/* ---------- 工具 ---------- */
+const rnd  = (a,b)=> a + Math.random()*(b-a);
+const gauss = ()=> (Math.random()+Math.random()+Math.random()-1.5);
+
+/* ---------- 散布坐标（星空） ---------- */
+const aScatter = new Float32Array(COUNT*3);
+for (let i=0;i<COUNT;i++){
+  const r  = 1.7 + Math.pow(Math.random(), .72) * 3.3;
+  const th = Math.random()*Math.PI*2;
+  const ph = Math.acos(2*Math.random()-1);
+  aScatter[i*3  ] = r*Math.sin(ph)*Math.cos(th);
+  aScatter[i*3+1] = r*Math.sin(ph)*Math.sin(th)*0.72;   // 略扁的星系盘
+  aScatter[i*3+2] = r*Math.cos(ph)*0.85 - 0.6;          // 整体后移，制造景深
+}
+
+/* ---------- 图形点云生成 ---------- */
+function sampleKnot(n){                       // OpenAI 风格六瓣编织花结
+  const out = new Float32Array(n*3);
+  const R = 1.02, cD = 0.62*R, cR = 0.56*R;
+  for (let i=0;i<n;i++){
+    if (Math.random() < 0.08){                // 8% 中心星云
+      const r = Math.abs(gauss())*0.22*R;
+      const th = Math.random()*Math.PI*2, ph = Math.acos(2*Math.random()-1);
+      out[i*3]=r*Math.sin(ph)*Math.cos(th); out[i*3+1]=r*Math.sin(ph)*Math.sin(th); out[i*3+2]=r*Math.cos(ph)*0.6;
+      continue;
+    }
+    const k = (Math.random()*6)|0;
+    const phi = k*Math.PI/3 + 0.2618;         // 整体转 15°
+    const ux=Math.cos(phi), uy=Math.sin(phi), vx=-uy, vy=ux;
+    const tilt = (k%2===0 ? 1 : -1) * 0.30;   // 交替倾斜 → 编织感
+    const a = Math.random()*Math.PI*2;
+    const ca=Math.cos(a)*cR, sa=Math.sin(a)*cR;
+    out[i*3  ] = ux*cD + ca*ux + sa*vx + gauss()*0.015;
+    out[i*3+1] = uy*cD + ca*uy + sa*vy + gauss()*0.015;
+    out[i*3+2] = sa*Math.sin(tilt)*1.6      + gauss()*0.015;
+  }
+  return out;
+}
+function sampleTorus(n){                      // 星环
+  const out = new Float32Array(n*3);
+  const R=0.92, r=0.16;
+  for (let i=0;i<n;i++){
+    const u=Math.random()*Math.PI*2, v=Math.random()*Math.PI*2;
+    const d=(R + r*Math.cos(v)*Math.sqrt(Math.random()));
+    out[i*3]=d*Math.cos(u); out[i*3+1]=d*Math.sin(u)*0.92; out[i*3+2]=r*Math.sin(v)*2.2+gauss()*0.02;
+  }
+  return out;
+}
+function sampleText(str, n){                  // 文字点云
+  const cv = document.createElement('canvas');
+  cv.width = 1400; cv.height = 320;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 200px "Arial Black","Helvetica Neue",Arial,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(str, 700, 165);
+  const data = ctx.getImageData(0,0,cv.width,cv.height).data;
+  const pool = [];
+  for (let y=0; y<cv.height; y+=3)
+    for (let x=0; x<cv.width; x+=3)
+      if (data[(y*cv.width+x)*4+3] > 120) pool.push(x, y);
+  const out = new Float32Array(n*3);
+  const sx = 2.55/1400, sy = 2.55/1400;
+  const yOff = (cv.height/2)*sy;
+  for (let i=0;i<n;i++){
+    const j = ((Math.random()*pool.length)>>1)*2;
+    out[i*3  ] = (pool[j]  -700)*sx + gauss()*0.008;
+    out[i*3+1] = -(pool[j+1]-165)*sy + gauss()*0.008;
+    out[i*3+2] = gauss()*0.05;
+  }
+  return out;
+}
+const SHAPES = {
+  knot : ()=> sampleKnot(NM),
+  ring : ()=> sampleTorus(NM),
+  astra: ()=> sampleText('ASTRA', NM),
+  gpt6 : ()=> sampleText('GPT-6', NM),
+};
+
+/* ---------- 几何属性 ---------- */
+const aGatherA = new Float32Array(COUNT*3);
+const aGatherB = new Float32Array(COUNT*3);
+const aRand  = new Float32Array(COUNT*4);     // size, phase, delay, colorMix
+const aStar  = new Float32Array(COUNT);
+for (let i=0;i<COUNT;i++){
+  aRand[i*4]=rnd(0.5,1.6); aRand[i*4+1]=Math.random(); aRand[i*4+2]=Math.random(); aRand[i*4+3]=Math.random();
+  aStar[i] = i >= NM ? 1 : 0;
+}
+function writeGather(arr, pts){
+  for (let i=0;i<COUNT;i++){
+    if (i >= NM){ arr[i*3]=aScatter[i*3]; arr[i*3+1]=aScatter[i*3+1]; arr[i*3+2]=aScatter[i*3+2]; }
+    else { const j=(i%NM)*3; arr[i*3]=pts[j]; arr[i*3+1]=pts[j+1]; arr[i*3+2]=pts[j+2]; }
+  }
+}
+let shapePts = SHAPES.knot();
+writeGather(aGatherA, shapePts);
+writeGather(aGatherB, shapePts);
+
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(aScatter.slice(), 3)); // 占位（真实位置在 shader 中计算）
+geo.setAttribute('aScatter', new THREE.BufferAttribute(aScatter, 3));
+geo.setAttribute('aGatherA', new THREE.BufferAttribute(aGatherA, 3));
+geo.setAttribute('aGatherB', new THREE.BufferAttribute(aGatherB, 3));
+geo.setAttribute('aRand',    new THREE.BufferAttribute(aRand, 4));
+geo.setAttribute('aStar',    new THREE.BufferAttribute(aStar, 1));
+geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 8);
+
+/* ---------- 着色器 ---------- */
+const uniforms = {
+  uTime:      { value: 0 },
+  uProgress:  { value: 0 },
+  uMorph:     { value: 1 },
+  uMouse:     { value: new THREE.Vector3(99, 99, 0) },
+  uPush:      { value: 0 },
+  uHover:     { value: 0 },
+  uDPR:       { value: DPR },
+  uSwirlAmp:  { value: CONFIG.swirlAmp },
+  uPushR2:    { value: CONFIG.pushRadius },
+  uPushBase:  { value: CONFIG.pushBase },
+  uPushAmp:   { value: CONFIG.pushAmp },
+};
+
+const vert = /* glsl */`
+  attribute vec3  aScatter;
+  attribute vec3  aGatherA;
+  attribute vec3  aGatherB;
+  attribute vec4  aRand;
+  attribute float aStar;
+  uniform float uTime, uProgress, uMorph, uPush, uHover, uDPR, uSwirlAmp, uPushR2, uPushBase, uPushAmp;
+  uniform vec3  uMouse;
+  varying float vAlpha;
+  varying vec3  vColor;
+
+  mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+
+  void main(){
+    /* --- 每粒子延迟的聚拢进度（平滑缓动） --- */
+    float e = clamp((uProgress - aRand.z*0.35) / 0.65, 0.0, 1.0);
+    e = e*e*(3.0-2.0*e);
+    e *= (1.0 - aStar);                       // 星尘永不聚拢
+
+    /* --- 散布态：整体缓慢旋转 + 个体漂浮 --- */
+    vec3 sc = aScatter;
+    sc.xz = rot(uTime*0.016 + aRand.z*0.6) * sc.xz;
+    float dr = uTime*0.5 + aRand.y*6.2831;
+    sc += vec3(sin(dr), cos(dr*1.31), sin(dr*0.73)) * 0.05 * (1.0-e);
+
+    /* --- 目标图形：切换 morph + 成形后缓慢自转与呼吸 --- */
+    vec3 gt = mix(aGatherA, aGatherB, uMorph);
+    gt.xz = rot(uTime*0.07 + aRand.y*0.22) * gt.xz;
+    gt *= 1.0 + sin(uTime*0.9)*0.012;
+
+    /* --- 插值 + 切向螺旋（漩涡聚拢轨迹） --- */
+    vec3 pos = mix(sc, gt, e);
+    vec3 dir = gt - sc;
+    vec3 tan = normalize(cross(vec3(0.0,1.0,0.0), dir) + vec3(1e-4));
+    pos += tan * sin(e*3.14159) * (0.35 + aRand.x*0.4) * uSwirlAmp;
+
+    /* --- 鼠标力场：高斯衰减斥力（速度脉冲 + 悬停基础） --- */
+    vec3 toM = pos - uMouse;
+    float d2 = dot(toM, toM);
+    float force = exp(-d2/uPushR2) * (uPushBase*uHover + uPush);
+    pos += (toM / (sqrt(d2)+1e-3)) * force * uPushAmp;
+
+    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * mv;
+
+    /* --- 尺寸：近大远小；聚拢更致密；星尘更细 --- */
+    float depth = -mv.z;
+    float sz = aRand.x * (1.35 - e*0.45) * (1.0 - aStar*0.42);
+    gl_PointSize = clamp(sz * uDPR * 19.0 / depth, 1.0, 26.0);
+
+    /* --- 颜色：青 → 紫 → 暖白 --- */
+    vec3 cA = vec3(0.55,0.85,1.00);
+    vec3 cB = vec3(0.72,0.58,1.00);
+    vec3 cC = vec3(1.00,0.98,0.92);
+    vec3 col = mix(mix(cA,cB,aRand.w), cC, pow(aRand.w,3.0)*0.5 + e*0.22);
+    vColor = mix(col, vec3(0.92,0.96,1.0), aStar*0.65);
+
+    /* --- 闪烁：星尘强闪，主体微闪 --- */
+    float twMain = 0.74 + 0.26*sin(uTime*(1.0+aRand.x*2.2) + aRand.y*6.2831);
+    float twStar = 0.30 + 0.70*(0.5+0.5*sin(uTime*(0.6+aRand.x*1.7) + aRand.y*6.2831));
+    vAlpha  = mix(twMain, twStar, aStar);
+    vAlpha *= smoothstep(10.5, 2.6, depth);   // 深度渐隐
+    vAlpha *= mix(0.85, 1.30, e);             // 聚拢更亮
+  }
+`;
+const frag = /* glsl */`
+  precision highp float;
+  varying float vAlpha;
+  varying vec3  vColor;
+  void main(){
+    float d = length(gl_PointCoord - 0.5);
+    if (d > 0.5) discard;
+    float a    = pow(smoothstep(0.5, 0.06, d), 1.4);      // 软边
+    float core = smoothstep(0.16, 0.0, d) * 0.9;          // 亮核
+    vec3 col = vColor * (a + core*1.25) * vAlpha;
+    gl_FragColor = vec4(col, 1.0);                        // 加法混合
+  }
+`;
+
+const mat = new THREE.ShaderMaterial({
+  uniforms, vertexShader: vert, fragmentShader: frag,
+  transparent: true, depthTest: false, depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const points = new THREE.Points(geo, mat);
+scene.add(points);
+
+/* ---------- 滚动进度 ---------- */
+const stage = document.getElementById('stage');
+let targetProgress = 0, progress = 0;
+function measure(){
+  const rect = stage.getBoundingClientRect();
+  const total = rect.height - innerHeight;
+  targetProgress = Math.min(1, Math.max(0, -rect.top / total));
+}
+addEventListener('scroll', measure, { passive:true });
+measure();
+
+/* ---------- 鼠标 / 触摸 ---------- */
+const mouseNDC = new THREE.Vector2(0, 0);
+const mouseWorld = new THREE.Vector3(99, 99, 0);
+const mouseSmooth = new THREE.Vector3(99, 99, 0);
+let prevNDC = { x:0, y:0 };
+let hover = 0, hoverTarget = 0;
+let push = 0, pushVel = 0;                      // 欠阻尼弹簧推力
+
+function pointerMove(cx, cy){
+  const nx = (cx/innerWidth)*2 - 1, ny = -(cy/innerHeight)*2 + 1;
+  const dx = nx - prevNDC.x, dy = ny - prevNDC.y;
+  pushVel += Math.min(Math.sqrt(dx*dx + dy*dy) * 26, 3.2);   // 速度注入
+  prevNDC = { x:nx, y:ny };
+  mouseNDC.set(nx, ny);
+  hoverTarget = 1;
+  // NDC → 世界（z=0 平面）
+  const v = new THREE.Vector3(nx, ny, 0.5).unproject(camera);
+  const dir = v.sub(camera.position).normalize();
+  const t = -camera.position.z / dir.z;
+  mouseWorld.copy(camera.position).addScaledVector(dir, t);
+}
+addEventListener('mousemove', e => pointerMove(e.clientX, e.clientY), { passive:true });
+addEventListener('touchmove', e => { const t=e.touches[0]; pointerMove(t.clientX, t.clientY); }, { passive:true });
+addEventListener('mouseleave', ()=> hoverTarget = 0);
+addEventListener('touchend',   ()=> hoverTarget = 0);
+
+/* ---------- 图形切换 ---------- */
+let morphT = 1;
+const btns = document.querySelectorAll('.shape-btn');
+btns.forEach(b => b.addEventListener('click', ()=>{
+  if (morphT < 0.999) return;                    // 上一次切换未完成
+  btns.forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  const next = SHAPES[b.dataset.shape]();
+  // gatherA ← 当前实际显示目标（含 morph 中间态）
+  const m = uniforms.uMorph.value;
+  for (let i=0;i<COUNT*3;i++) aGatherA[i] = aGatherA[i]*(1-m) + aGatherB[i]*m;
+  writeGather(aGatherB, next);
+  geo.attributes.aGatherA.needsUpdate = true;
+  geo.attributes.aGatherB.needsUpdate = true;
+  morphT = 0;
+}));
+
+/* ---------- 文案显隐 ---------- */
+const hero = document.getElementById('hero');
+const copies = [...document.querySelectorAll('.stage-copy')];
+const bar = document.getElementById('bar');
+const clamp01 = v => Math.min(1, Math.max(0, v));
+function updateCopy(){
+  const p = progress;
+  const ho = 1 - clamp01(p/0.22);
+  hero.style.opacity = ho;
+  hero.style.transform = `translateY(${-p*140}px)`;
+  for (const c of copies){
+    const f = +c.dataset.from, t = +c.dataset.to;
+    const o = clamp01((p-f)/0.09) * clamp01((t-p)/0.09);
+    c.style.opacity = o;
+    c.style.transform = `translateY(${(1-o)*26}px)`;
+  }
+  bar.style.width = (p*100).toFixed(1) + '%';
+}
+
+/* ---------- 主循环 ---------- */
+const clock = new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t  = clock.elapsedTime;
+
+  // 进度平滑
+  progress += (targetProgress - progress) * Math.min(1, dt*5.5);
+
+  // 图形 morph 动画
+  if (morphT < 1){
+    morphT = Math.min(1, morphT + dt/1.15);
+    const m = morphT*morphT*(3-2*morphT);
+    uniforms.uMorph.value = m;
+  }
+
+  // 推力弹簧（欠阻尼：推开 → 弹性回落）
+  pushVel += (-push*26 - pushVel*5.5) * dt;
+  push = Math.max(-0.4, Math.min(2.0, push + pushVel*dt));
+  push *= (1 - 0.6*dt);
+  uniforms.uPush.value = push;
+  hover += (hoverTarget - hover) * Math.min(1, dt*7);
+  uniforms.uHover.value = hover;
+
+  // 鼠标位置平滑拖尾
+  mouseSmooth.lerp(mouseWorld, Math.min(1, dt*9));
+  uniforms.uMouse.value.copy(mouseSmooth);
+
+  // 相机：聚拢推近 + 鼠标视差
+  const e = progress;
+  camera.position.z = 3.5 - e*0.55;
+  camera.position.x += (mouseNDC.x*0.16 - camera.position.x) * Math.min(1, dt*3);
+  camera.position.y += (-mouseNDC.y*0.10 - camera.position.y) * Math.min(1, dt*3);
+  camera.lookAt(0, 0, 0);
+
+  uniforms.uTime.value = t;
+  uniforms.uProgress.value = progress;
+
+  updateCopy();
+  renderer.render(scene, camera);
+}
+tick();
+
+/* ---------- resize ---------- */
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  measure();
+});
+</script>
+
+<details class="gb-seo">
+<summary>本页说明 · Astra 星域粒子 · GLM5.3</summary>
+<div class="gb-seo-body">
+<h1>Astra 星域粒子 — GLM5.3 的实现</h1>
+<p><b>题目</b>：OpenAI 的 GPT-6 Astra 页面（https://openai.com/index/gpt-6-astra/）的首页和中间，有一个很酷炫的动态效果：鼠标滚动的时候粒子可以聚拢和散开，聚拢之后是一个特定的图形，散开之后是一些像星星一样的小点点；鼠标移动到上面，也有互动效果。请复刻这个效果，最好完全一模一样，然后制作一个独立的演示页面。</p>
+<p><b>模型</b>：GLM5.3　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：<a href="https://gaibang.pages.dev/aibench/works/glm53flash-astra.html" rel="nofollow">GLM5.3-flash</a> <a href="https://gaibang.pages.dev/aibench/works/spacebunny-astra.html" rel="nofollow">Space bunny</a> <a href="https://gaibang.pages.dev/aibench/works/gpt56luna-astra.html" rel="nofollow">GPT-5.6 Luna（ChatGPT免费版）</a> <a href="https://gaibang.pages.dev/aibench/works/hy4preview-astra.html" rel="nofollow">Hy4 preview</a> <a href="https://gaibang.pages.dev/aibench/works/qwen3827b-astra.html" rel="nofollow">Qwen3.8-27b</a> <a href="https://gaibang.pages.dev/aibench/works/step5preview-astra.html" rel="nofollow">Step-5-Preview</a></p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-astra.html">本题对照页</a></p>
+</div>
+</details>
+</body>
+</html>

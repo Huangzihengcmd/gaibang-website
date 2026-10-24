@@ -78,7 +78,8 @@ def orphan_works(remote_paths=None):
             out.append("aibench/works/" + fn)
     # 远程残留：本地已删、但 GitHub 上还在的旧作品（改名或匹配修正后产生）
     for rp in (remote_paths or []):
-        if rp.startswith("aibench/works/") and rp.endswith(".html") and rp not in keep:
+        if (rp.startswith("aibench/works/") and rp.endswith(".html")
+                and os.path.basename(rp) not in keep):
             if rp not in out:
                 out.append(rp)
     return out
@@ -178,7 +179,10 @@ delete = ["新建文本文档.txt", "start_https_silent.bat",
           "functions/api/vault/delete.js", "functions/api/vault/download.js"]
 delete = delete + orphan_works(remote_paths)
 
+_upsert_paths = set(upsert)
 for f in delete:
+    if f in _upsert_paths:
+        continue
     if f in remote_paths:
         changes.append({"path": f, "mode": "100644", "type": "blob", "sha": None})
         print("delete      %s" % f)

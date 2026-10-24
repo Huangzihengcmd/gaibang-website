@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Astra 星域粒子 · Qwen3.8-27b 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「Astra 星域粒子」题目下，Qwen3.8-27b 的 AI 实作作品。题目要求：OpenAI 的 GPT-6 Astra 页面（https://openai.com/index/gpt-6-astra/）的首页和中间，有一个很酷炫的动态效果：鼠标滚动的时候粒子可以聚拢和散开，聚拢之后是一个特定的图形… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/qwen3827b-astra.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="Astra 星域粒子 · Qwen3.8-27b 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「Astra 星域粒子」题目下，Qwen3.8-27b 的 AI 实作作品。题目要求：OpenAI 的 GPT-6 Astra 页面（https://openai.com/index/gpt-6-astra/）的首页和中间，有一个很酷炫的动态效果：鼠标滚动的时候粒子可以聚拢和散开，聚拢之后是一个特定的图形… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/qwen3827b-astra.html" />
+<meta name="keywords" content="Astra 星域粒子,Qwen3.8-27b,AI 实作,HTML 单文件,ASTRA PARTICLES" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:#000;color:#fff;font-family:"Inter","SF Pro Display","Segoe UI","Microsoft YaHei",sans-serif;overflow-x:hidden}
+#stage{position:fixed;inset:0;width:100vw;height:100vh;display:block;z-index:0}
+#scroll-space{position:relative;z-index:1;pointer-events:none}
+section{height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:0 6vw}
+section.tall{height:180vh;align-items:flex-end;padding-bottom:14vh}
+.kicker{font-size:12px;letter-spacing:.42em;text-transform:uppercase;color:#7f8ea3;margin-bottom:18px;font-weight:500}
+h1{font-size:clamp(40px,7.2vw,96px);font-weight:650;letter-spacing:-.03em;line-height:1.04;background:linear-gradient(180deg,#ffffff 20%,#9fb0c8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 34px rgba(150,190,255,.25))}
+h2{font-size:clamp(28px,4.4vw,58px);font-weight:600;letter-spacing:-.02em;line-height:1.15;max-width:22ch;color:#e8edf5}
+p.sub{margin-top:20px;font-size:clamp(14px,1.5vw,18px);color:#8fa0b8;line-height:1.7;max-width:52ch}
+.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 18px;font-size:12px;letter-spacing:.18em;color:#b9c6d8;margin-bottom:26px;background:rgba(255,255,255,.03);backdrop-filter:blur(6px)}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:#6fe3c1;box-shadow:0 0 10px #6fe3c1;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.cue{position:absolute;bottom:38px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;color:#6f7f96;font-size:10px;letter-spacing:.5em;text-transform:uppercase}
+.cue .line{width:1px;height:44px;background:linear-gradient(180deg,#8fa0b8,transparent);animation:drop 2.2s ease-in-out infinite;transform-origin:top}
+@keyframes drop{0%{transform:scaleY(0);opacity:0}35%{transform:scaleY(1);opacity:1}100%{transform:scaleY(1) translateY(14px);opacity:0}}
+.ghost{font-size:clamp(120px,26vw,340px);font-weight:700;letter-spacing:-.05em;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(160,190,255,.16);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none}
+.tag{font-size:11px;letter-spacing:.4em;color:#5d6c82;text-transform:uppercase;margin-bottom:14px}
+#credit{position:fixed;right:18px;bottom:14px;z-index:2;font-size:10px;letter-spacing:.14em;color:#44506a;pointer-events:none}
+@media (max-width:640px){h1{font-size:15vw}section{padding:0 5vw}}
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="scroll-space">
+  <section id="s-hero">
+    <div class="badge"><span class="dot"></span>NEW · FRONTIER MODEL</div>
+    <div class="kicker">A NEW GENERATION OF INTELLIGENCE</div>
+    <h1>GPT-6 Astra</h1>
+    <p class="sub">滚动页面 —— 星尘将聚拢成形，再散作漫天星点。<br>移动鼠标，扰动这片粒子星海。</p>
+    <div class="cue"><span>SCROLL</span><span class="line"></span></div>
+  </section>
+  <section id="s-mid" class="tall">
+    <div class="tag">CAPABILITIES</div>
+    <h2>聚拢是智能的形态<br>散开是可能的宇宙</h2>
+    <p class="sub">每一次滚动都在重新编织这片粒子 —— 从星点汇聚为六芒螺旋，再解构回无序而自由的光尘。</p>
+  </section>
+  <section id="s-end">
+    <div class="kicker">EXPLORE</div>
+    <h2 style="max-width:26ch">星尘散尽之处，<br>是新的聚拢</h2>
+    <p class="sub">把鼠标停在画面中央片刻，粒子会像被呼吸牵引一样缓缓收拢。<br>移开手，它们又各自流浪。</p>
+    <div class="ghost">ASTRA</div>
+  </section>
+</div>
+<div id="credit">PARTICLE RE-CREATION · DEMO</div>
+<script>
+'use strict';
+
+/* ========== 基础：Canvas / 尺寸 / DPR ========== */
+const cv = document.getElementById('stage');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', () => { resize(); buildStars(); buildTargets(); });
+resize();
+
+/* ========== 缓动工具 ========== */
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = t => { t = clamp01(t); return t * t * (3 - 2 * t); };
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+/* ========== 滚动进度 ========== */
+let scrollY = 0, docH = 1;
+function measure() {
+  docH = Math.max(1, document.body.scrollHeight - window.innerHeight);
+}
+window.addEventListener('scroll', () => { scrollY = window.scrollY; }, { passive: true });
+window.addEventListener('resize', measure);
+
+/* 三段映射：0~0.35 聚拢成形 / 0.35~0.62 保持 / 0.62~1 散开
+   首页滚动时：从散开的星点 → 聚成目标图形（6 芒螺旋）
+   中部滚动时：保持聚拢并缓慢自转
+   末尾滚动时：图形解构 → 重新散作星点 */
+function cohesion() {
+  const p = scrollY / docH;              // 0..1 总进度
+  if (p < 0.35) return smoothstep(p / 0.35);
+  if (p < 0.62) return 1;
+  return 1 - smoothstep((p - 0.62) / 0.38);
+}
+function sectionP() { return scrollY / docH; }
+
+/* ========== 目标图形：六芒螺旋星（对应 Astra 海报的螺旋 "6"） ==========
+   每个粒子在图形上的归一化位置（-0.5..0.5），带呼吸相位与色相 */
+const N_SPIRAL = 1500, N_DUST = 700, N = N_SPIRAL + N_DUST;
+function buildSpiralTargets() {
+  const arr = [];
+  const arms = 6;
+  for (let i = 0; i < N_SPIRAL; i++) {
+    const t = i / N_SPIRAL;
+    const arm = i % arms;
+    // 主螺旋：从中心向外盘旋 2.4 圈
+    const theta = t * Math.PI * 4.8 + (arm / arms) * Math.PI * 2;
+    const r = Math.pow(t, 0.72);
+    // 环上扰动：让形体有厚度，像发光的粒子团
+    const wobble = Math.sin(t * 40 + arm * 2) * 0.012;
+    const x = (r * Math.cos(theta) + wobble) * 0.42;
+    const y = (r * Math.sin(theta) + wobble) * 0.42;
+    // 核心亮簇：约 1/3 的粒子向中心聚集
+    const core = i < N_SPIRAL / 3 ? 0.25 : 1;
+    arr.push({
+      x: x * core, y: y * core,
+      ph: Math.random() * Math.PI * 2,        // 呼吸相位
+      hue: 200 + t * 60,                       // 青 → 蓝紫
+      size: 0.7 + Math.pow(Math.random(), 3) * 2.2,
+      tw: 0.6 + Math.random() * 1.8,          // 闪烁速度
+    });
+  }
+  return arr;
+}
+/* 星点（散开形态）：全屏随机分布，大星亮、小星暗
+   每个粒子（含螺旋粒子）都有自己的散开位置，共 N 个 */
+function buildDustTargets(w, h) {
+  const arr = [];
+  const minDim = Math.min(w, h);
+  for (let i = 0; i < N; i++) {
+    const big = Math.pow(Math.random(), 2.4);
+    arr.push({
+      x: (Math.random() - 0.5) * w * 1.05,
+      y: (Math.random() - 0.5) * h * 1.05,
+      ph: Math.random() * Math.PI * 2,
+      hue: 205 + Math.random() * 70,
+      size: 0.5 + big * (minDim * 0.004),
+      tw: 0.5 + Math.random() * 2,
+      depth: 0.3 + Math.random() * 0.7,        // 视差深度
+    });
+  }
+  return arr;
+}
+
+/* ========== 粒子池 ========== */
+let particles = [];
+let spiralT = [], dustT = [];
+function buildTargets() {
+  spiralT = buildSpiralTargets();
+  dustT = buildDustTargets(W, H);
+}
+function buildStars() {
+  // 星点初始位置 = 散开形态；目标图形在 buildTargets 提供
+  const old = particles;
+  buildTargets();
+  if (old.length === N) {
+    // 复用，保留当前运动状态
+    particles = old;
+  } else {
+    particles = [];
+    for (let i = 0; i < N; i++) {
+      const d = dustT[i];
+      particles.push({
+        x: d.x, y: d.y,
+        vx: 0, vy: 0,
+        px: d.x, py: d.y,       // 上一帧（拖尾）
+        hue: d.hue,
+        size: d.size,
+        tw: d.tw,
+        ph: d.ph,
+        depth: d.depth,
+        seed: Math.random(),
+      });
+    }
+  }
+}
+
+/* ========== 鼠标互动 ========== */
+const mouse = { x: -9999, y: -9999, vx: 0, vy: 0, active: false, hover: 0 };
+window.addEventListener('mousemove', (e) => {
+  const nx = e.clientX, ny = e.clientY;
+  if (mouse.active) { mouse.vx = nx - mouse.x; mouse.vy = ny - mouse.y; }
+  mouse.x = nx; mouse.y = ny; mouse.active = true;
+}, { passive: true });
+window.addEventListener('mouseleave', () => { mouse.active = false; mouse.x = -9999; mouse.y = -9999; });
+window.addEventListener('touchmove', (e) => {
+  const t = e.touches[0];
+  if (t) { mouse.x = t.clientX; mouse.y = t.clientY; mouse.active = true; }
+}, { passive: true });
+window.addEventListener('touchend', () => { mouse.active = false; }, { passive: true });
+
+/* ========== 物理更新：星点 ⇄ 图形 的双态弹簧 + 鼠标扰动 ========== */
+function update(dt, t) {
+  const coh = cohesion();              // 0=散开星点 1=聚拢图形
+  const coh2 = coh * coh;
+  const cx = W / 2, cy = H / 2;
+  const minDim = Math.min(W, H);
+  const shapeR = minDim * 0.40;        // 图形半径（屏幕占比）
+  // 图形自转（滚动越靠中段越慢，聚拢态带呼吸）
+  const spin = t * 0.06 + (scrollY / docH) * 1.2;
+  const cs = Math.cos(spin), sn = Math.sin(spin);
+  const breath = 1 + Math.sin(t * 0.9) * 0.015;
+  // 鼠标 hover 引力：停在中央区域时把星尘吸成漩涡
+  mouse.hover = lerp(mouse.hover, (mouse.active ? 1 : 0), dt * 3);
+  const mr = minDim * 0.30;            // 鼠标作用半径
+  const mPush = 90;                    // 推离强度
+  const mSwirl = 0.55;                 // 漩涡切向
+  const mAttract = coh > 0.75 ? 26 : 10; // 聚拢态鼠标引力更强
+
+  for (let i = 0; i < N; i++) {
+    const p = particles[i];
+    let tx, ty;
+    if (i < N_SPIRAL) {
+      // 螺旋图形粒子：聚拢时吸附到螺旋位置，散开时飞向自己的星点位置
+      const s = spiralT[i];
+      const d = dustT[i];
+      const sx = cx + (s.x * cs - s.y * sn) * 2 * shapeR * breath;
+      const sy = cy + (s.x * sn + s.y * cs) * 2 * shapeR * breath;
+      tx = lerp(d.x + cx, sx, coh2);
+      ty = lerp(d.y + cy, sy, coh2);
+      // 聚拢过程中叠加涡旋轨迹（让粒子螺旋飞入而非直线）
+      if (coh > 0.02 && coh < 0.98) {
+        const swirlAng = (1 - coh) * (2.2 + p.seed * 1.5) + p.ph;
+        const off = (1 - coh) * (60 + p.seed * 220);
+        tx += Math.cos(swirlAng) * off;
+        ty += Math.sin(swirlAng) * off * 0.8;
+      }
+      p.hue = lerp(d.hue, s.hue, coh2);
+      p.size = lerp(d.size, s.size, coh2);
+    } else {
+      // 背景星尘：永远漂浮（随滚动/时间缓慢漂移 + 视差）
+      const d = dustT[i];
+      const drift = (scrollY / docH) * minDim * 0.25 * p.depth;
+      tx = d.x + cx + Math.sin(t * 0.12 * p.tw + p.ph) * 18 * p.depth - drift * 0.3;
+      ty = d.y + cy - drift * 0.5 + Math.cos(t * 0.09 * p.tw + p.ph) * 14 * p.depth;
+      p.hue = d.hue;
+      p.size = d.size;
+    }
+    // 弹簧力（刚度随聚拢度变化：聚拢时更紧）
+    const k = lerp(1.6, 6.0, coh2);
+    const damp = lerp(0.90, 0.86, coh2);
+    let ax = (tx - p.x) * k;
+    let ay = (ty - p.y) * k;
+    // 鼠标互动：推离 + 漩涡
+    if (mouse.active && mouse.hover > 0.01) {
+      const dx = p.x - mouse.x, dy = p.y - mouse.y;
+      const dist2 = dx * dx + dy * dy;
+      const R = mr * (0.7 + 0.3 * mouse.hover);
+      if (dist2 < R * R && dist2 > 0.01) {
+        const dist = Math.sqrt(dist2);
+        const fall = 1 - dist / R;           // 0..1 影响衰减
+        const nx = dx / dist, ny = dy / dist;
+        // 推离（随鼠标速度增强）
+        const speed = Math.hypot(mouse.vx, mouse.vy);
+        const push = (mPush * fall * (0.35 + Math.min(1, speed / 40) * 1.4) + mAttract * fall * 0.5) * mouse.hover;
+        ax += nx * push + (-ny) * mSwirl * fall * 26 * mouse.hover;  // 推离 + 切向漩涡
+        ay += ny * push + (nx) * mSwirl * fall * 26 * mouse.hover;
+      }
+    }
+    p.vx = (p.vx + ax * dt) * Math.pow(damp, dt * 60);
+    p.vy = (p.vy + ay * dt) * Math.pow(damp, dt * 60);
+    p.px = p.x; p.py = p.y;
+    p.x += p.vx * dt * 60 * 0.16;
+    p.y += p.vy * dt * 60 * 0.16;
+    // 软边界
+    if (p.x < -W * 0.06) p.x = -W * 0.06; else if (p.x > W * 1.06) p.x = W * 1.06;
+    if (p.y < -H * 0.06) p.y = -H * 0.06; else if (p.y > H * 1.06) p.y = H * 1.06;
+  }
+  // 鼠标速度衰减
+  mouse.vx *= 0.82; mouse.vy *= 0.82;
+}
+
+/* ========== 渲染：辉光粒子（径向渐变缓存 + 拖尾） ========== */
+// 预渲染辉光贴图：每个色相一个 64px sprite，避免每帧建渐变
+const GLOW_CACHE = new Map();
+function glowSprite(hue) {
+  const key = Math.round(hue / 6) * 6;
+  let s = GLOW_CACHE.get(key);
+  if (s) return s;
+  const size = 64, c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, `hsla(${key},100%,92%,1)`);
+  grad.addColorStop(0.22, `hsla(${key},95%,72%,0.85)`);
+  grad.addColorStop(0.5, `hsla(${key},90%,60%,0.28)`);
+  grad.addColorStop(1, `hsla(${key},90%,55%,0)`);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, size, size);
+  s = c; GLOW_CACHE.set(key, s);
+  return s;
+}
+function render(t) {
+  // 背景：深空黑蓝 + 极弱的中心光
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#01030a';
+  ctx.fillRect(0, 0, W, H);
+  const coh = cohesion();
+  const minDim = Math.min(W, H);
+  if (coh > 0.03) {
+    const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, minDim * 0.62);
+    g.addColorStop(0, `rgba(40,80,160,${0.10 * coh})`);
+    g.addColorStop(0.5, `rgba(20,40,100,${0.05 * coh})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // 加色叠加发光
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < N; i++) {
+    const p = particles[i];
+    // 闪烁
+    const tw = 0.55 + 0.45 * Math.sin(t * p.tw + p.ph);
+    const alpha = (0.28 + 0.72 * tw) * (0.5 + 0.5 * p.depth);
+    const r = p.size * (2.6 + 1.2 * tw) * (W < 640 ? 0.8 : 1);
+    const sprite = glowSprite(p.hue);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite, p.x - r, p.y - r, r * 2, r * 2);
+    // 拖尾（快速移动时画一条细线）
+    const sp2 = (p.x - p.px) * (p.x - p.px) + (p.y - p.py) * (p.y - p.py);
+    if (sp2 > 0.35) {
+      ctx.globalAlpha = Math.min(0.32, Math.sqrt(sp2) * 0.05) * alpha;
+      ctx.strokeStyle = `hsla(${p.hue | 0},95%,78%,1)`;
+      ctx.lineWidth = Math.max(0.6, p.size * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(p.px, p.py);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  // 聚拢核心光晕（图形完全成形时中央出现）
+  if (coh > 0.92) {
+    const a = (coh - 0.92) / 0.08;
+    const r = minDim * 0.16 * (1 + Math.sin(t * 1.1) * 0.06);
+    const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r);
+    g.addColorStop(0, `rgba(220,240,255,${0.16 * a})`);
+    g.addColorStop(1, 'rgba(120,180,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, r, 0, 7); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // 顶部/底部渐隐（融合页面文字区）
+  const vg = ctx.createLinearGradient(0, 0, 0, H);
+  vg.addColorStop(0, 'rgba(1,3,10,0.55)');
+  vg.addColorStop(0.18, 'rgba(1,3,10,0)');
+  vg.addColorStop(0.82, 'rgba(1,3,10,0)');
+  vg.addColorStop(1, 'rgba(1,3,10,0.55)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+/* ========== 主循环 ========== */
+measure();
+buildStars();
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.05) dt = 0.05;
+  const t = now / 1000;
+  update(dt, t);
+  render(t);
+}
+requestAnimationFrame(frame);
+</script>
+
+<details class="gb-seo">
+<summary>本页说明 · Astra 星域粒子 · Qwen3.8-27b</summary>
+<div class="gb-seo-body">
+<h1>Astra 星域粒子 — Qwen3.8-27b 的实现</h1>
+<p><b>题目</b>：OpenAI 的 GPT-6 Astra 页面（https://openai.com/index/gpt-6-astra/）的首页和中间，有一个很酷炫的动态效果：鼠标滚动的时候粒子可以聚拢和散开，聚拢之后是一个特定的图形，散开之后是一些像星星一样的小点点；鼠标移动到上面，也有互动效果。请复刻这个效果，最好完全一模一样，然后制作一个独立的演示页面。</p>
+<p><b>模型</b>：Qwen3.8-27b　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：<a href="https://gaibang.pages.dev/aibench/works/glm53flash-astra.html" rel="nofollow">GLM5.3-flash</a> <a href="https://gaibang.pages.dev/aibench/works/spacebunny-astra.html" rel="nofollow">Space bunny</a> <a href="https://gaibang.pages.dev/aibench/works/gpt56luna-astra.html" rel="nofollow">GPT-5.6 Luna（ChatGPT免费版）</a> <a href="https://gaibang.pages.dev/aibench/works/hy4preview-astra.html" rel="nofollow">Hy4 preview</a> <a href="https://gaibang.pages.dev/aibench/works/step5preview-astra.html" rel="nofollow">Step-5-Preview</a> <a href="https://gaibang.pages.dev/aibench/works/glm53-astra.html" rel="nofollow">GLM5.3</a></p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-astra.html">本题对照页</a></p>
+</div>
+</details>
+</body>
+</html>

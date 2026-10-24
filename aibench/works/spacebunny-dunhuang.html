@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#140b09">
+<title>敦煌飞天粒子画 · Space bunny 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「敦煌飞天粒子画」题目下，Space bunny 的 AI 实作作品。题目要求：请你做一个敦煌飞天粒子画 网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。 用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/spacebunny-dunhuang.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="敦煌飞天粒子画 · Space bunny 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「敦煌飞天粒子画」题目下，Space bunny 的 AI 实作作品。题目要求：请你做一个敦煌飞天粒子画 网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。 用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/spacebunny-dunhuang.html" />
+<meta name="keywords" content="敦煌飞天粒子画,Space bunny,AI 实作,HTML 单文件,DUNHUANG FLYING APSARA" />
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#140b09;}
+  body{
+    font-family:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC",serif;
+    color:#f0dcc0;-webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  #stage{display:block;position:fixed;inset:0;touch-action:none;cursor:crosshair}
+
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:5;
+       padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right))
+               max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));}
+  .hud > *{pointer-events:auto}
+
+  /* 标题 */
+  #title{position:absolute;left:max(22px,env(safe-area-inset-left));top:max(22px,env(safe-area-inset-top));
+         display:flex;gap:14px;align-items:flex-start;pointer-events:none;}
+  #title .bar{width:2px;height:66px;background:linear-gradient(180deg,#f5d68a,rgba(200,64,47,0));border-radius:2px}
+  #title h1{font-size:26px;font-weight:600;letter-spacing:.32em;color:#f7e3bd;text-shadow:0 0 18px rgba(245,214,138,.35)}
+  #title p{margin-top:6px;font-size:12px;letter-spacing:.24em;color:rgba(240,220,192,.5)}
+
+  /* 右上：fps / 提示 */
+  #meta{position:absolute;right:max(22px,env(safe-area-inset-right));top:max(24px,env(safe-area-inset-top));
+        text-align:right;pointer-events:none;font-size:11px;letter-spacing:.16em;color:rgba(240,220,192,.38);
+        font-family:ui-monospace,Menlo,Consolas,monospace}
+  #meta b{color:rgba(245,214,138,.75);font-weight:500}
+
+  /* 底部控制条 */
+  #bar{position:absolute;left:50%;transform:translateX(-50%);
+       bottom:max(24px,env(safe-area-inset-bottom));
+       display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;
+       padding:7px;border-radius:999px;
+       background:rgba(30,18,14,.42);border:1px solid rgba(245,214,138,.18);
+       backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+       box-shadow:0 10px 40px rgba(0,0,0,.45);
+       transition:opacity .35s ease, transform .35s ease;max-width:calc(100vw - 32px)}
+  #bar.hide{opacity:0;transform:translateX(-50%) translateY(18px);pointer-events:none}
+  .btn{
+    appearance:none;border:1px solid rgba(245,214,138,.24);background:rgba(245,214,138,.06);
+    color:#f3e0bd;font-family:inherit;font-size:13px;letter-spacing:.14em;
+    padding:9px 16px;border-radius:999px;cursor:pointer;line-height:1;
+    transition:background .2s ease,color .2s ease,border-color .2s ease,transform .12s ease;white-space:nowrap
+  }
+  .btn:hover{background:rgba(245,214,138,.15)}
+  .btn:active{transform:scale(.95)}
+  .btn.on{background:rgba(245,214,138,.24);border-color:rgba(245,214,138,.5);color:#fff3d8}
+  .sep{width:1px;height:18px;background:rgba(245,214,138,.18);margin:0 2px}
+
+  #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:max(86px,calc(env(safe-area-inset-bottom) + 86px));
+        font-size:11.5px;letter-spacing:.2em;color:rgba(240,220,192,.34);pointer-events:none;
+        white-space:nowrap;transition:opacity .6s ease}
+  #hint.fade{opacity:0}
+
+  @media (max-width:560px){
+    #title h1{font-size:19px;letter-spacing:.24em}
+    #title p{font-size:10px;letter-spacing:.16em}
+    #title .bar{height:52px}
+    .btn{padding:10px 13px;font-size:12px;letter-spacing:.08em}
+    #meta{font-size:10px}
+    #hint{font-size:10px;letter-spacing:.12em}
+  }
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div class="hud">
+  <div id="title">
+    <div class="bar"></div>
+    <div>
+      <h1>敦煌飞天</h1>
+      <p>流 光 · 飘 带 · 众 生</p>
+    </div>
+  </div>
+
+  <div id="meta"><b id="fps">60</b> FPS<br><span id="pcount">0</span> 粒子</div>
+
+  <div id="hint">移动鼠标 / 手指　扰动流光　·　空格 暂停　·　R 回放</div>
+
+  <div id="bar">
+    <button class="btn" id="bPlay">暂停</button>
+    <button class="btn" id="bReplay">回放</button>
+    <span class="sep"></span>
+    <button class="btn" id="bDensity">粒子 高</button>
+    <button class="btn" id="bHide">隐藏界面</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ========== 基础工具 ========== */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const mix = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+
+/* ========== 画布 ========== */
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d', { alpha: false });
+let W = 0, H = 0, MIN = 0, DPR = 1;
+
+function resize() {
+  W = Math.max(320, window.innerWidth);
+  H = Math.max(320, window.innerHeight);
+  MIN = Math.min(W, H);
+  DPR = clamp(window.devicePixelRatio || 1, 1, 2);
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildBackground();
+  layoutRibbons();
+  buildPool();
+  seedAll();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+
+/* ========== 敦煌配色 ========== */
+const PAL = {
+  gold:   [246, 214, 138],
+  amber:  [232, 176,  74],
+  cinnabar:[214,  92,  62],
+  azure:  [ 74, 140, 178],
+  malachite:[116,178, 142],
+  cream:  [255, 246, 224]
+};
+
+/* 发光精灵（替代逐粒渐变，性能更好） */
+function makeGlow(rgb, soft) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const rad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  rad.addColorStop(0,    'rgba(255,255,255,1)');
+  rad.addColorStop(soft ? 0.14 : 0.22, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.92)`);
+  rad.addColorStop(0.55, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.28)`);
+  rad.addColorStop(1,    `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+  g.fillStyle = rad;
+  g.fillRect(0, 0, 64, 64);
+  return c;
+}
+const SPR = {
+  gold:    makeGlow(PAL.gold, false),
+  amber:   makeGlow(PAL.amber, false),
+  cinnabar:makeGlow(PAL.cinnabar, false),
+  azure:   makeGlow(PAL.azure, true),
+  malachite:makeGlow(PAL.malachite, true),
+  cream:   makeGlow(PAL.cream, false),
+  mist:    makeGlow([180, 150, 130], true)
+};
+
+/* ========== 壁画底纹（离屏一次性生成） ========== */
+let bgTex = null;
+function buildBackground() {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.floor(W * DPR * 0.6));
+  c.height = Math.max(1, Math.floor(H * DPR * 0.6));
+  const g = c.getContext('2d');
+  const bw = c.width, bh = c.height;
+
+  // 底色：深褐土壁
+  let grd = g.createLinearGradient(0, 0, bw * 0.3, bh);
+  grd.addColorStop(0,    '#1b0f0b');
+  grd.addColorStop(0.45, '#26150f');
+  grd.addColorStop(1,    '#170c09');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, bw, bh);
+
+  // 斑驳土色
+  const blobs = ['#3b2318', '#4a2a17', '#2a3a33', '#402018', '#1f2b33'];
+  g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 130; i++) {
+    const x = Math.random() * bw, y = Math.random() * bh;
+    const r = rnd(0.04, 0.22) * bw;
+    const col = blobs[(Math.random() * blobs.length) | 0];
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, col + '2e');
+    rg.addColorStop(1, col + '00');
+    g.fillStyle = rg;
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  }
+
+  // 顶部藻井弧带
+  g.lineWidth = Math.max(1, bw * 0.0016);
+  for (let i = 0; i < 7; i++) {
+    g.strokeStyle = `rgba(246,214,138,${0.055 - i * 0.006})`;
+    g.beginPath();
+    g.arc(bw * 0.5, -bh * 0.28, bw * (0.14 + i * 0.075), 0.22 * Math.PI, 0.78 * Math.PI);
+    g.stroke();
+  }
+
+  // 底部莲座（曼陀罗环）
+  const cxp = bw * 0.5, cyp = bh * 1.04, rr = bw * 0.30;
+  g.strokeStyle = 'rgba(232,176,74,0.10)';
+  g.lineWidth = Math.max(1, bw * 0.0014);
+  for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(cxp, cyp, rr * (0.55 + i * 0.16), 0, TAU); g.stroke(); }
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * TAU;
+    g.beginPath();
+    g.moveTo(cxp + Math.cos(a) * rr * 0.55, cyp + Math.sin(a) * rr * 0.55);
+    g.lineTo(cxp + Math.cos(a) * rr * 1.19, cyp + Math.sin(a) * rr * 1.19);
+    g.stroke();
+  }
+
+  // 侧边经文残影
+  g.globalAlpha = 0.05;
+  g.fillStyle = '#f0dcc0';
+  g.font = `${Math.round(bw * 0.013)}px serif`;
+  const glyphs = '南無阿彌陀佛般若波羅蜜多心經';
+  for (let i = 0; i < 14; i++) {
+    g.fillText(glyphs[i % glyphs.length], bw * 0.022, bh * (0.12 + i * 0.06));
+    g.fillText(glyphs[(i * 5 + 3) % glyphs.length], bw * 0.965, bh * (0.14 + i * 0.06));
+  }
+  g.globalAlpha = 1;
+
+  // 暗角
+  g.globalCompositeOperation = 'source-over';
+  const vg = g.createRadialGradient(bw * 0.5, bh * 0.5, Math.min(bw, bh) * 0.22, bw * 0.5, bh * 0.5, Math.max(bw, bh) * 0.78);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.72)');
+  g.fillStyle = vg;
+  g.fillRect(0, 0, bw, bh);
+
+  bgTex = c;
+}
+
+/* ========== 飘带（脊线采样） ========== */
+const N = 120;
+const RIBBONS = [
+  { hue: PAL.gold,    w: 1.00, lag: 2.75, lateral: 0.0,  weight: 0.42 },
+  { hue: PAL.amber,   w: 0.60, lag: 2.40, lateral: 0.75, weight: 0.31 },
+  { hue: PAL.cinnabar,w: 0.46, lag: 3.05, lateral: -0.62,weight: 0.27 }
+];
+RIBBONS.forEach(r => {
+  r.P = {
+    px: new Float32Array(N), py: new Float32Array(N),
+    nx: new Float32Array(N), ny: new Float32Array(N),
+    hw: new Float32Array(N)
+  };
+  r.spr = makeGlow(r.hue, false);
+});
+
+function layoutRibbons() {
+  RIBBONS.forEach(r => {
+    r.baseW = MIN * 0.030 * r.w;
+  });
+}
+
+// 飞天飘行的轨迹（主轨迹，三条飘带共用同一段历史）
+const _a = { x: 0, y: 0 }, _b = { x: 0, y: 0 };
+function spine(t, out) {
+  const cx = W * 0.5, cy = H * 0.52;
+  out.x = cx + Math.sin(t * 0.58) * W * 0.31 + Math.sin(t * 1.27 + 1.7) * W * 0.10;
+  out.y = cy + Math.sin(t * 0.91 + 0.8) * H * 0.19 + Math.cos(t * 0.44 + 2.3) * H * 0.085;
+}
+
+function updateRibbons() {
+  for (let r = 0; r < RIBBONS.length; r++) {
+    const rb = RIBBONS[r], P = rb.P;
+    const step = rb.lag / (N - 1);
+    for (let i = 0; i < N; i++) {
+      const t = time - i * step + r * 0.55;
+      spine(t, _a);
+      spine(t + 0.03, _b);
+      let tx = _b.x - _a.x, ty = _b.y - _a.y;
+      const m = Math.hypot(tx, ty) || 1;
+      tx /= m; ty /= m;
+      const nx = -ty, ny = tx;
+
+      const u = i / (N - 1);
+      const prof = Math.pow(Math.sin(Math.PI * clamp(u, 0, 1)), 0.55);
+      const hw = rb.baseW * prof * (1 - u * 0.22) + 0.8;
+
+      P.px[i] = _a.x + nx * rb.lateral * hw * 2.2;
+      P.py[i] = _a.y + ny * rb.lateral * hw * 2.2;
+      P.nx[i] = nx; P.ny[i] = ny;
+      P.hw[i] = hw;
+    }
+  }
+}
+
+/* ========== 粒子 ========== */
+let P_MAX = 0, activeCount = 0, densityRatio = 1;
+let particles = [];
+
+function buildPool() {
+  const total = clamp(Math.round(W * H / 1600), 380, 1200);
+  P_MAX = Math.round(total * 1.0);
+  particles = new Array(P_MAX);
+  let i = 0;
+  RIBBONS.forEach((rb, ri) => {
+    const n = Math.round(P_MAX * rb.weight);
+    for (let k = 0; k < n && i < P_MAX; k++, i++) {
+      const useGold = Math.random() < 0.34;
+      const useBlue = Math.random() < 0.20;
+      const col = useGold ? mix(rb.hue, PAL.cream, 0.5)
+                : useBlue ? (Math.random() < 0.5 ? PAL.azure : PAL.malachite)
+                : rb.hue;
+      particles[i] = {
+        r: ri,
+        u: Math.random(),
+        ang: rnd(0, TAU),
+        rad: Math.sqrt(Math.random()) * rnd(0.7, 1.5),
+        spin: rnd(-0.7, 0.7),
+        seed: rnd(0, TAU),
+        x: 0, y: 0, vx: 0, vy: 0,
+        size: rnd(4.5, 13),
+        spr: (useBlue || useGold) ? (useGold ? SPR.cream : SPR[Math.random() < 0.5 ? 'azure' : 'malachite'])
+           : (ri === 2 ? SPR.cinnabar : ri === 1 ? SPR.amber : SPR.gold),
+        col: col,
+        a: rnd(0.35, 0.95)
+      };
+    }
+  });
+  for (; i < P_MAX; i++) {
+    particles[i] = {
+      r: 0, u: Math.random(), ang: rnd(0, TAU), rad: 1, spin: 0.4, seed: rnd(0, TAU),
+      x: W / 2, y: H / 2, vx: 0, vy: 0, size: 8, spr: SPR.gold, a: 0.4
+    };
+  }
+  activeCount = Math.min(P_MAX, Math.round(P_MAX * densityRatio));
+}
+
+function seedAll() {
+  for (let i = 0; i < activeCount; i++) {
+    const p = particles[i];
+    anchor(p);
+    p.x = p.tx; p.y = p.ty;
+    p.vx = 0; p.vy = 0;
+  }
+}
+
+const K = 0.052, DAMP = 0.895;
+
+function anchor(p) {
+  const P = RIBBONS[p.r].P;
+  const f = p.u * (N - 1);
+  let i = f | 0; if (i > N - 2) i = N - 2;
+  const fr = f - i;
+  const x = P.px[i] + (P.px[i + 1] - P.px[i]) * fr;
+  const y = P.py[i] + (P.py[i + 1] - P.py[i]) * fr;
+  const nx = P.nx[i] + (P.nx[i + 1] - P.nx[i]) * fr;
+  const ny = P.ny[i] + (P.ny[i + 1] - P.ny[i]) * fr;
+  const hw = P.hw[i] + (P.hw[i + 1] - P.hw[i]) * fr;
+
+  const ca = Math.cos(p.ang), sa = Math.sin(p.ang);
+  const wob = Math.sin(time * 1.7 + p.seed) * 2.4;
+  const rx = p.rad * hw * 1.7;
+  p.tx = x + nx * ca * rx - ny * sa * rx * 0.85 + wob;
+  p.ty = y + ny * ca * rx + nx * sa * rx * 0.85 + Math.cos(time * 1.35 + p.seed * 1.7) * 2.4;
+}
+
+/* ========== 火星 / 尘埃 ========== */
+let sparks = [];
+function spawnSpark(x, y, vx, vy) {
+  if (sparks.length > 420) return;
+  sparks.push({
+    x, y, vx: vx * 0.18 + rnd(-40, 40), vy: vy * 0.18 + rnd(-40, 40),
+    life: 1, dec: rnd(0.7, 1.7), size: rnd(5, 14),
+    spr: SPR[Math.random() < 0.6 ? 'gold' : (Math.random() < 0.5 ? 'amber' : 'cinnabar')],
+    a: rnd(0.5, 1)
+  });
+}
+
+let motes = [];
+function buildMotes() {
+  const n = clamp(Math.round(W * H / 9000), 50, 130);
+  motes = [];
+  for (let i = 0; i < n; i++) motes.push({
+    x: Math.random() * W, y: Math.random() * H,
+    vy: rnd(-9, -2), ph: rnd(0, TAU), s: rnd(1.2, 3.4), a: rnd(0.1, 0.4)
+  });
+}
+
+/* 云气 */
+let mists = [];
+function buildMist() {
+  mists = [];
+  for (let i = 0; i < 3; i++) mists.push({
+    x: Math.random() * W, y: Math.random() * H,
+    r: MIN * rnd(0.32, 0.6), sp: rnd(0.06, 0.2) * (Math.random() < .5 ? -1 : 1), a: rnd(0.03, 0.07)
+  });
+}
+
+/* ========== 输入 ========== */
+const pointer = { x: W / 2, y: H / 2, px: W / 2, py: H / 2, vx: 0, vy: 0, speed: 0, active: false, id: null };
+
+function setPointer(x, y) { pointer.x = x; pointer.y = y; }
+
+function onMove(e) {
+  const p = e.touches ? e.touches[0] : e;
+  setPointer(p.clientX, p.clientY);
+  pointer.active = true;
+}
+window.addEventListener('mousemove', onMove, { passive: true });
+window.addEventListener('touchmove', e => { onMove(e); }, { passive: true });
+window.addEventListener('touchstart', e => { onMove(e); pointer.down = true; }, { passive: true });
+window.addEventListener('touchend', () => { pointer.down = false; }, { passive: true });
+window.addEventListener('mousedown', () => { pointer.down = true; });
+window.addEventListener('mouseup',   () => { pointer.down = false; });
+
+/* ========== 控制 ========== */
+let time = 0, paused = false, firstDone = false, fadeIn = 0;
+
+const $play = document.getElementById('bPlay');
+const $replay = document.getElementById('bReplay');
+const $dens = document.getElementById('bDensity');
+const $hide = document.getElementById('bHide');
+const $hint = document.getElementById('hint');
+const $fpsEl = document.getElementById('fps');
+const $pcEl = document.getElementById('pcount');
+
+function togglePlay() {
+  paused = !paused;
+  $play.textContent = paused ? '继续' : '暂停';
+  $play.classList.toggle('on', paused);
+}
+function replay() {
+  time = 0; sparks.length = 0; fadeIn = 1; paused = false;
+  $play.textContent = '暂停'; $play.classList.remove('on');
+  for (const p of particles) { p.u = Math.random(); p.ang = rnd(0, TAU); p.vx = p.vy = 0; }
+  seedAll();
+  firstDone = true;
+}
+const DENSITIES = [
+  { label: '粒子 低', r: 0.45 },
+  { label: '粒子 中', r: 0.72 },
+  { label: '粒子 高', r: 1.0 }
+];
+let densIdx = 2;
+function cycleDensity() {
+  densIdx = (densIdx + 1) % 3;
+  densityRatio = DENSITIES[densIdx].r;
+  $dens.textContent = DENSITIES[densIdx].label;
+  activeCount = Math.round(P_MAX * densityRatio);
+}
+$play.onclick = togglePlay;
+$replay.onclick = replay;
+$dens.onclick = cycleDensity;
+$hide.onclick = () => document.getElementById('bar').classList.toggle('hide');
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 'r' || e.key === 'R') replay();
+  else if (e.key === 'h' || e.key === 'H') document.getElementById('bar').classList.toggle('hide');
+});
+
+setTimeout(() => $hint.classList.add('fade'), 7000);
+
+/* ========== 绘制：飘带 ========== */
+function drawRibbon(rb) {
+  const P = rb.P;
+  // 外发光（细描边多层）
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // 主带：填充渐变多边形（真正的锥形收束）
+  const grd = ctx.createLinearGradient(P.px[0], P.py[0], P.px[N - 1], P.py[N - 1]);
+  const c = rb.hue;
+  grd.addColorStop(0,    `rgba(${c[0]},${c[1]},${c[2]},0.90)`);
+  grd.addColorStop(0.28, `rgba(${c[0]},${c[1]},${c[2]},0.62)`);
+  grd.addColorStop(0.70, `rgba(${c[0]},${c[1]},${c[2]},0.24)`);
+  grd.addColorStop(1,    `rgba(${c[0]},${c[1]},${c[2]},0)`);
+
+  ctx.beginPath();
+  ctx.moveTo(P.px[0] + P.nx[0] * P.hw[0], P.py[0] + P.ny[0] * P.hw[0]);
+  for (let i = 1; i < N; i++) ctx.lineTo(P.px[i] + P.nx[i] * P.hw[i], P.py[i] + P.ny[i] * P.hw[i]);
+  for (let i = N - 1; i >= 0; i--) ctx.lineTo(P.px[i] - P.nx[i] * P.hw[i], P.py[i] - P.ny[i] * P.hw[i]);
+  ctx.closePath();
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  // 内芯亮线
+  ctx.beginPath();
+  ctx.moveTo(P.px[2], P.py[2]);
+  for (let i = 3; i < N; i++) ctx.lineTo(P.px[i], P.py[i]);
+  ctx.strokeStyle = `rgba(255,246,224,0.30)`;
+  ctx.lineWidth = Math.max(1, rb.baseW * 0.10);
+  ctx.stroke();
+
+  // 边缘金线
+  ctx.beginPath();
+  ctx.moveTo(P.px[0], P.py[0]);
+  for (let i = 1; i < N; i++) ctx.lineTo(P.px[i], P.py[i]);
+  ctx.strokeStyle = `rgba(255,238,200,0.16)`;
+  ctx.lineWidth = Math.max(0.8, rb.baseW * 0.05);
+  ctx.stroke();
+
+  // 沿线若干"宝珠"节点
+  for (let k = 10; k < N - 6; k += 26) {
+    const s = rb.baseW * 0.55 * (1 - k / N);
+    ctx.globalAlpha = 0.55 * (1 - k / N);
+    ctx.drawImage(rb.spr, P.px[k] - s, P.py[k] - s, s * 2, s * 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ========== 绘制：飞天（线描，敦煌铁线描） ========== */
+const figScaleBase = () => MIN * 0.0018;
+let fig = { x: 0, y: 0, a: 0 };
+
+function drawApsara(fx, fy, ang, sc, breath) {
+  ctx.save();
+  ctx.translate(fx, fy);
+  ctx.rotate(ang);
+  ctx.scale(sc, sc);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // 背光
+  const halo = ctx.createRadialGradient(0, -10, 0, 0, -10, 120);
+  halo.addColorStop(0, 'rgba(255,236,196,0.16)');
+  halo.addColorStop(0.5, 'rgba(232,176,74,0.06)');
+  halo.addColorStop(1, 'rgba(232,176,74,0)');
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(0, -10, 120, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'lighter';
+
+  const ink = `rgba(255,244,214,${0.50 * breath})`;
+  const ink2 = `rgba(246,214,138,${0.34 * breath})`;
+
+  // 外层柔光（同一路径画粗一点）
+  function path(fn, w, col, glow) {
+    if (glow) { fn(); ctx.lineWidth = w * 2.6; ctx.strokeStyle = col.replace(/[\d.]+\)$/, '0.10)'); ctx.stroke(); }
+    fn(); ctx.lineWidth = w; ctx.strokeStyle = col; ctx.stroke();
+  }
+
+  // 身：颈 → 胸 → 腰 → 胯
+  path(() => {
+    ctx.beginPath();
+    ctx.moveTo(0, -40);
+    ctx.bezierCurveTo(3, -28, 6, -14, 9, 4);
+    ctx.bezierCurveTo(11, 16, 8, 26, 3, 36);
+  }, 7, ink, true);
+
+  // 头
+  ctx.beginPath(); ctx.arc(-1, -52, 10.5, 0, TAU);
+  ctx.lineWidth = 5; ctx.strokeStyle = ink; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -64, 6.5, 0, TAU);
+  ctx.fillStyle = ink2; ctx.fill();
+  // 冠
+  ctx.beginPath(); ctx.moveTo(-11, -56); ctx.quadraticCurveTo(4, -70, 12, -56);
+  ctx.lineWidth = 3; ctx.strokeStyle = ink2; ctx.stroke();
+
+  // 前臂上扬
+  path(() => {
+    ctx.beginPath();
+    ctx.moveTo(4, -30);
+    ctx.bezierCurveTo(18, -44, 34, -50, 50, -44);
+  }, 4.5, ink, true);
+
+  // 后臂后掠
+  path(() => {
+    ctx.beginPath();
+    ctx.moveTo(-2, -26);
+    ctx.bezierCurveTo(-18, -20, -34, -6, -46, 10);
+  }, 4, ink, true);
+
+  // 裙裾：三道飘拂
+  const skirt = [
+    [[7, 30], [-6, 52], [-26, 68], [-52, 74]],
+    [[5, 34], [-10, 58], [-34, 78], [-66, 82]],
+    [[9, 28], [4, 54], [-6, 76], [-24, 96]]
+  ];
+  skirt.forEach((pts, idx) => {
+    path(() => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      ctx.bezierCurveTo(pts[1][0], pts[1][1], pts[2][0], pts[2][1], pts[3][0], pts[3][1]);
+    }, 3.4 - idx * 0.7, idx === 1 ? ink : ink2, idx === 0);
+  });
+
+  // 腰间飘帛（指向飘带起点）
+  path(() => {
+    ctx.beginPath();
+    ctx.moveTo(2, 16);
+    ctx.bezierCurveTo(-14, 10, -30, 12, -46, 22);
+  }, 3, ink2, false);
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/* ========== 主循环 ========== */
+let last = performance.now(), acc = 0, frames = 0, fps = 60, lowFpsFrames = 0;
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = (now - last) / 1000; last = now;
+  if (dt > 0.1) dt = 0.1;
+  if (dt <= 0) return;
+
+  if (!paused) time += dt;
+  if (!firstDone && time > 0.1) firstDone = true;
+  if (fadeIn > 0) fadeIn = Math.max(0, fadeIn - dt * 0.55);
+
+  // fps
+  acc += dt; frames++;
+  if (acc > 0.5) { fps = Math.round(frames / acc); frames = 0; acc = 0; $fpsEl.textContent = fps; $pcEl.textContent = activeCount; }
+
+  const s = clamp(dt * 60, 0.25, 2.2);
+
+  // 指针速度
+  pointer.vx = (pointer.x - pointer.px) / Math.max(dt, 1 / 240);
+  pointer.vy = (pointer.y - pointer.py) / Math.max(dt, 1 / 240);
+  pointer.px = pointer.x; pointer.py = pointer.y;
+  pointer.speed = Math.hypot(pointer.vx, pointer.vy);
+  pointer.speed *= 0.82;
+
+  updateRibbons();
+
+  // ---- 粒子更新：弹簧回归 + 鼠标斥力 + 涡旋 ----
+  const R = MIN * 0.17 + 46;
+  const R2 = R * R;
+  const REP = 6.2;
+  const mx = pointer.x, my = pointer.y;
+  const mvx = clamp(pointer.vx * 0.02, -3.2, 3.2);
+  const mvy = clamp(pointer.vy * 0.02, -3.2, 3.2);
+
+  for (let i = 0; i < activeCount; i++) {
+    const p = particles[i];
+    p.ang += p.spin * 0.012 * s;
+    anchor(p);
+
+    p.vx += (p.tx - p.x) * K;
+    p.vy += (p.ty - p.y) * K;
+
+    const dx = p.x - mx, dy = p.y - my;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < R2 && d2 > 0.01) {
+      const d = Math.sqrt(d2);
+      const f = 1 - d / R;
+      const ff = f * f;
+      const ux = dx / d, uy = dy / d;
+      p.vx += ux * ff * REP * s;
+      p.vy += uy * ff * REP * s;
+      // 切向涡旋
+      p.vx += -uy * ff * mvx * s;
+      p.vy +=  ux * ff * mvy * s;
+    }
+
+    p.vx *= DAMP; p.vy *= DAMP;
+    p.x += p.vx * s; p.y += p.vy * s;
+  }
+
+  // ---- 火星 ----
+  if (pointer.active && pointer.speed > 260) {
+    const n = Math.min(4, 1 + (pointer.speed / 700) | 0);
+    for (let k = 0; k < n; k++) spawnSpark(pointer.x, pointer.y, pointer.vx, pointer.vy);
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s0 = sparks[i];
+    s0.x += s0.vx * dt; s0.y += s0.vy * dt;
+    s0.vx *= 0.965; s0.vy = s0.vy * 0.965 - 14 * dt;
+    s0.life -= s0.dec * dt;
+    if (s0.life <= 0) sparks.splice(i, 1);
+  }
+
+  // ---- 绘制 ----
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  if (bgTex) { ctx.drawImage(bgTex, 0, 0, W, H); }
+  else { ctx.fillStyle = '#1b0f0b'; ctx.fillRect(0, 0, W, H); }
+
+  // 云气
+  ctx.globalCompositeOperation = 'lighter';
+  for (const m of mists) {
+    m.x += m.sp * dt * 12; if (m.x < -m.r) m.x = W + m.r; if (m.x > W + m.r) m.x = -m.r;
+    ctx.globalAlpha = m.a;
+    ctx.drawImage(SPR.mist, m.x - m.r, m.y - m.r, m.r * 2, m.r * 2);
+  }
+  ctx.globalAlpha = 1;
+
+  // 飘带
+  for (const rb of RIBBONS) drawRibbon(rb);
+
+  // 飞天（头部跟随脊线起点）
+  {
+    spine(time, _a); spine(time + 0.03, _b);
+    const ang = Math.atan2(_b.y - _a.y, _b.x - _a.x);
+    fig.x = _a.x; fig.y = _a.y; fig.a = ang;
+    const breath = 0.85 + 0.15 * Math.sin(time * 1.4);
+    drawApsara(fig.x, fig.y, ang, figScaleBase() * (0.94 + 0.06 * Math.sin(time * 1.1)), breath);
+  }
+
+  // 粒子
+  ctx.globalCompositeOperation = 'lighter';
+  const bob = 0.9 + 0.1 * Math.sin(time * 2.2);
+  for (let i = 0; i < activeCount; i++) {
+    const p = particles[i];
+    const sz = p.size * bob;
+    ctx.globalAlpha = p.a;
+    ctx.drawImage(p.spr, p.x - sz, p.y - sz, sz * 2, sz * 2);
+  }
+  ctx.globalAlpha = 1;
+
+  // 火星
+  for (const s0 of sparks) {
+    const k = s0.life * s0.life;
+    ctx.globalAlpha = k * s0.a;
+    ctx.drawImage(s0.spr, s0.x - s0.size, s0.y - s0.size, s0.size * 2, s0.size * 2);
+  }
+  ctx.globalAlpha = 1;
+
+  // 浮尘
+  ctx.globalCompositeOperation = 'lighter';
+  for (const m of motes) {
+    if (!paused) {
+      m.y += m.vy * dt; m.x += Math.sin(time * 0.5 + m.ph) * 6 * dt;
+      if (m.y < -10) { m.y = H + 10; m.x = Math.random() * W; }
+    }
+    ctx.globalAlpha = m.a * (0.6 + 0.4 * Math.sin(time + m.ph));
+    ctx.fillStyle = '#f3d9a4';
+    ctx.fillRect(m.x, m.y, m.s, m.s);
+  }
+  ctx.globalAlpha = 1;
+
+  // 开场淡入 / 自适应画质
+  if (fadeIn > 0) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(20,11,9,${fadeIn * 0.9})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (fps < 38) { lowFpsFrames++; if (lowFpsFrames > 8 && activeCount > 260) { activeCount = Math.round(activeCount * 0.85); lowFpsFrames = 0; } }
+  else if (fps > 56) lowFpsFrames = 0;
+
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ========== 启动 ========== */
+buildMotes();
+buildMist();
+resize();
+requestAnimationFrame(frame);
+
+// 隐藏界面时点击画面唤回
+canvas.addEventListener('click', () => document.getElementById('bar').classList.remove('hide'));
+
+// 首帧前把指针放到起点，避免第一次甩动突变
+setTimeout(() => { pointer.px = pointer.x; pointer.py = pointer.y; }, 60);
+
+})();
+</script>
+
+<details class="gb-seo">
+<summary>本页说明 · 敦煌飞天粒子画 · Space bunny</summary>
+<div class="gb-seo-body">
+<h1>敦煌飞天粒子画 — Space bunny 的实现</h1>
+<p><b>题目</b>：请你做一个敦煌飞天粒子画
+
+网页上有一条飞天飘带，鼠标移动时飘带跟着飘，粒子散开又聚拢，像敦煌壁画活了。
+
+用 Canvas 或 WebGL 实现粒子系统、飘带轨迹、鼠标交互、暂停/回放、移动端适配。</p>
+<p><b>模型</b>：Space bunny　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：<a href="https://gaibang.pages.dev/aibench/works/glm53flash-dunhuang.html" rel="nofollow">GLM5.3-flash</a> <a href="https://gaibang.pages.dev/aibench/works/step5preview-dunhuang.html" rel="nofollow">Step-5-Preview</a> <a href="https://gaibang.pages.dev/aibench/works/kimik3-dunhuang.html" rel="nofollow">Kimi K3</a></p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-dunhuang.html">本题对照页</a></p>
+</div>
+</details>
+</body>
+</html>
