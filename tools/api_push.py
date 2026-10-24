@@ -57,7 +57,7 @@ def glob_works():
             out.append(rel)
     return out
 
-def orphan_works():
+def orphan_works(remote_paths=None):
     """works/ 里存在、但 data.js 没记录的文件 = 孤儿。
     原因：模型改名或题目匹配修正后，旧文件不会被覆盖也没人删。
     这些文件虽然不在页面上显示，但仍在线可访问，会造成重复内容。"""
@@ -76,6 +76,11 @@ def orphan_works():
         fn = os.path.basename(p)
         if fn not in keep:
             out.append("aibench/works/" + fn)
+    # 远程残留：本地已删、但 GitHub 上还在的旧作品（改名或匹配修正后产生）
+    for rp in (remote_paths or []):
+        if rp.startswith("aibench/works/") and rp.endswith(".html") and rp not in keep:
+            if rp not in out:
+                out.append(rp)
     return out
 
 
@@ -171,7 +176,7 @@ delete = ["新建文本文档.txt", "start_https_silent.bat",
           "functions/api/vault/create.js", "functions/api/vault/join.js",
           "functions/api/vault/upload.js", "functions/api/vault/files.js",
           "functions/api/vault/delete.js", "functions/api/vault/download.js"]
-delete = delete + orphan_works()
+delete = delete + orphan_works(remote_paths)
 
 for f in delete:
     if f in remote_paths:
