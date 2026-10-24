@@ -77,17 +77,9 @@ input::placeholder { color: #666; }
   </nav>
 </header>
 
-<div class="container">
+  <div class="container">
   <h2 class="page-title">云囊</h2>
   <p class="page-sub">协作资料库 · 上传即自动保存</p>
-
-  <!-- 如果在 Cloudflare 主站打开（本站后端未部署），提示去国内站 -->
-  <div id="cfNotice" style="display:none;background:rgba(255,215,0,.12);border:1px solid #ffd700;
-       border-radius:10px;padding:16px;margin-bottom:20px;color:#ffd700;text-align:center">
-    当前站点未启用文件存储功能，请前往国内站使用：<br>
-    <a href="http://122.51.67.138/vault.html" style="color:#fff;text-decoration:underline">
-      http://122.51.67.138/vault.html</a>
-  </div>
 
   <!-- 入口 -->
   <div id="gate">
@@ -157,15 +149,6 @@ input::placeholder { color: #666; }
 <script>
 let CODE = "", NAME = "", IS_CF = false;
 const $ = id => document.getElementById(id);
-
-// Cloudflare 主站 / GitHub Pages 站没有文件存储后端，提示改用国内站
-(function () {
-  var h = location.hostname || "";
-  if (h.indexOf("pages.dev") >= 0 || h.indexOf("github.io") >= 0) {
-    var n = document.getElementById("cfNotice");
-    if (n) n.style.display = "block";
-  }
-})();
 
 // Cloudflare 版下载走 JSON 返回 base64；Express 版直接给文件流
 async function downloadFile(id, name) {
