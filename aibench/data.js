@@ -204,6 +204,16 @@ window.AIBENCH = {
       "dates": {
         "qingming": "2026-10-17"
       }
+    },
+    {
+      "slug": "kimik3",
+      "name": "Kimi K3",
+      "works": {
+        "astra": "kimik3-astra.html"
+      },
+      "dates": {
+        "astra": "2026-10-24"
+      }
     }
   ]
 };
