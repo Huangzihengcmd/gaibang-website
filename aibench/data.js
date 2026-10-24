@@ -44,9 +44,9 @@ window.AIBENCH = {
     {
       "id": "topic6",
       "name": "老式收音机调频台",
-      "en": "老式收音",
-      "sub": "未分类",
-      "grad": "radial-gradient(circle at 50% 30%, #5c1d2b 0%, #2e1017 55%, #100609 100%)",
+      "en": "VINTAGE RADIO",
+      "sub": "机械交互",
+      "grad": "radial-gradient(circle at 50% 30%, #4a3520 0%, #261a0e 55%, #0e0905 100%)",
       "prompt": "做一个木纹老式收音机。旋钮可以拖拽或触摸旋转，频率随之变化；信号弱时有沙沙噪声，信号强时能听到电台音；支持存 3 个预设台，刷新后预设还在；支持键盘左右调频。音频必须用 Web Audio 程序合成，界面用 CSSCanvas 绘制。最终产物是一个 HTML 文件。\n\n验收点\n旋钮跟手，频率边界正确；噪声和电台音能切换；处理浏览器自动播放限制，用户点击后才出声；预设能存能读能删；手机触摸可调；单文件直接打开无外部请求。"
     },
     {
@@ -209,10 +209,10 @@ window.AIBENCH = {
       "slug": "kimik3",
       "name": "Kimi K3",
       "works": {
-        "astra": "kimik3-astra.html"
+        "dunhuang": "kimik3-dunhuang.html"
       },
       "dates": {
-        "astra": "2026-10-24"
+        "dunhuang": "2026-10-24"
       }
     }
   ]

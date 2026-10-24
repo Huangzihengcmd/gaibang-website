@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """通过 GitHub API 提交文件（当 git push 被代理阻断时的备用通道）"""
-import subprocess, json, base64, os, sys, tempfile, glob
+import subprocess, json, base64, os, sys, tempfile, glob, re
 
 REPO = "Huangzihengcmd/gaibang-website"
 ROOT = r"F:\gaibang-website"
@@ -56,6 +56,28 @@ def glob_works():
             rel = os.path.relpath(p, ROOT).replace("\\", "/")
             out.append(rel)
     return out
+
+def orphan_works():
+    """works/ 里存在、但 data.js 没记录的文件 = 孤儿。
+    原因：模型改名或题目匹配修正后，旧文件不会被覆盖也没人删。
+    这些文件虽然不在页面上显示，但仍在线可访问，会造成重复内容。"""
+    import glob as _g
+    try:
+        src = open(os.path.join(ROOT, "aibench", "data.js"), encoding="utf-8").read()
+        d = json.loads(re.search(r"window\.AIBENCH = (\{.*\});", src, re.S).group(1))
+    except Exception:
+        return []
+    keep = set()
+    for m in d.get("models", []):
+        for fn in (m.get("works") or {}).values():
+            keep.add(fn)
+    out = []
+    for p in _g.glob(os.path.join(ROOT, "aibench", "works", "*.html")):
+        fn = os.path.basename(p)
+        if fn not in keep:
+            out.append("aibench/works/" + fn)
+    return out
+
 
 def glob_functions():
     """自动收集 functions 目录下所有 Cloudflare Function 文件
@@ -149,6 +171,8 @@ delete = ["新建文本文档.txt", "start_https_silent.bat",
           "functions/api/vault/create.js", "functions/api/vault/join.js",
           "functions/api/vault/upload.js", "functions/api/vault/files.js",
           "functions/api/vault/delete.js", "functions/api/vault/download.js"]
+delete = delete + orphan_works()
+
 for f in delete:
     if f in remote_paths:
         changes.append({"path": f, "mode": "100644", "type": "blob", "sha": None})

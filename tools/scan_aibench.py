@@ -93,14 +93,40 @@ def discover_tests(config):
     return tests, need_cfg
 
 def match_test(filename, tests):
-    low = os.path.basename(filename).lower()
+    """把作品文件匹配到题目。
+
+    旧写法是"第一个命中就返回"，会让泛词抢先，把活抢错：
+    `Kimi-K3-敦煌飞天粒子画.html` 里含「粒子」，而「Astra 星域粒子」恰好排在
+    tests 列表前面、alias 又带「粒子」，结果敦煌的活被 Astra 抢走了。
+
+    现在改成打分制：所有题目的 alias 全跑一遍，谁更像谁赢
+      1) 文件名含完整题名（忽略空格/横线/下划线）→ 1000 分，直接锁定
+      2) 命中的 alias 字符数总和，每字 10 分（命中多个关键词说明更贴切）
+      3) 同分时按 config 里的先后顺序（先配置者优先）
+    """
+    base = os.path.basename(filename)
+    low = base.lower()
     flat = low.replace(" ", "").replace("-", "").replace("_", "")
+
+    best = None
+    best_score = 0
     for t in tests:
-        for kw in t["alias"]:
-            k = kw.lower().replace(" ", "").replace("-", "").replace("_", "")
+        score = 0
+
+        # 1) 完整题名命中，权重最高
+        name_flat = re.sub(r"[\s\-_（）()]+", "", (t.get("name") or "").lower())
+        if name_flat and name_flat in flat:
+            score = 100000
+
+        # 2) alias 命中长度累加
+        for kw in t.get("alias") or []:
+            k = re.sub(r"[\s\-_]+", "", (kw or "").lower())
             if k and (k in low or k in flat):
-                return t
-    return None
+                score += len(k) * 10
+
+        if score > best_score:
+            best, best_score = t, score
+    return best
 
 def main():
     os.makedirs(DST, exist_ok=True)
