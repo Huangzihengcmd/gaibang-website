@@ -41,37 +41,257 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://gaibang.pages.dev/aibench/test.html?id=watch</loc>
+    <loc>https://gaibang.pages.dev/aibench/t-astra.html</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gaibang.pages.dev/aibench/test.html?id=qingming</loc>
+    <loc>https://gaibang.pages.dev/aibench/t-watch.html</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gaibang.pages.dev/aibench/test.html?id=billiards</loc>
+    <loc>https://gaibang.pages.dev/aibench/t-billiards.html</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gaibang.pages.dev/aibench/test.html?id=maze</loc>
+    <loc>https://gaibang.pages.dev/aibench/t-maze.html</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/t-dunhuang.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/t-topic6.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/t-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://gaibang.pages.dev/aibench/test.html?id=astra</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/test.html?id=watch</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/test.html?id=billiards</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/test.html?id=maze</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
   </url>
   <url>
     <loc>https://gaibang.pages.dev/aibench/test.html?id=dunhuang</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/test.html?id=topic6</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/test.html?id=qingming</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53flash-billiards.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://gaibang.pages.dev/aibench/test.html?id=topic6</loc>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53flash-maze.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53flash-dunhuang.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53flash-watch.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53flash-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53flash-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/spacebunny-billiards.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/spacebunny-maze.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/spacebunny-watch.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/spacebunny-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/spacebunny-dunhuang.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/spacebunny-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/gpt56luna-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/gpt56luna-billiards.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/gpt56luna-maze.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/gpt56luna-watch.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/gpt56luna-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/hy4preview-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/hy4preview-watch.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/hy4preview-billiards.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/hy4preview-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/hy4preview-maze.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/qwen3827b-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/qwen3827b-billiards.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/qwen3827b-watch.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/qwen3827b-maze.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/qwen3827b-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/seed21pro-billiards.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/seed21pro-maze.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/seed21pro-watch.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/seed21pro-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/step5preview-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/step5preview-qingming.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/step5preview-dunhuang.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53-topic6.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/glm53-astra.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://gaibang.pages.dev/aibench/works/deekseekv41flash-qingming.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CELESTINE · 机械天文腕表</title>
+<title>机械天文腕表 · Qwen3.8-27b 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「机械天文腕表」题目下，Qwen3.8-27b 的 AI 实作作品。题目要求：用单个 HTML 文件实现一只机械腕表风格的天文时钟，纯原生实现，不许使用任何库、框架或 CDN。要求： 1. 主表盘读取本地系统时间，秒针平滑扫秒，使用 requestAnimationFrame 驱动，且长时间运行不… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/qwen3827b-watch.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="机械天文腕表 · Qwen3.8-27b 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「机械天文腕表」题目下，Qwen3.8-27b 的 AI 实作作品。题目要求：用单个 HTML 文件实现一只机械腕表风格的天文时钟，纯原生实现，不许使用任何库、框架或 CDN。要求： 1. 主表盘读取本地系统时间，秒针平滑扫秒，使用 requestAnimationFrame 驱动，且长时间运行不… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/qwen3827b-watch.html" />
+<meta name="keywords" content="机械天文腕表,Qwen3.8-27b,AI 实作,HTML 单文件,ASTRONOMICAL WATCH" />
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -161,6 +169,21 @@ body{
 }
 html.reduced .shimmer, html.reduced .crystal::after{animation:none}
 html.reduced .pbtn{transition:none}
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
 </style>
 </head>
 <body>
@@ -615,6 +638,41 @@ updateLapInfo();
 requestAnimationFrame(frame);
 })();
 </script>
+
+<details class="gb-seo">
+<summary>本页说明 · 机械天文腕表 · Qwen3.8-27b</summary>
+<div class="gb-seo-body">
+<h1>机械天文腕表 — Qwen3.8-27b 的实现</h1>
+<p><b>题目</b>：用单个 HTML 文件实现一只机械腕表风格的天文时钟，纯原生实现，不许使用任何库、框架或 CDN。要求：
+
+
+                1. 主表盘读取本地系统时间，秒针平滑扫秒，使用 requestAnimationFrame 驱动，且长时间运行不得累积漂移；切到其他标签页再切回来时，指针必须立即校准到正确时间。
+
+
+                2. 包含一个月相小表盘，根据当前日期计算并显示月相连续变化，公式需要自行实现，精度要求误差控制在 1 天内。
+
+
+                3. 包含一个可用的计时码表，通过子表盘指针显示，支持开始、暂停、继续、归零与计圈（lap），按钮在任意顺序点击都不能出现状态错误。
+
+
+                4. 日期窗显示当前日期，正确处理大小月与闰年。
+
+
+                5. 包含昼夜 / 日出日落指示，用户可在三到四个预设城市之间切换，并根据经纬度现场计算当地日出日落时刻。
+
+
+                6. 页面需要响应式，并尊重 prefers-reduced-motion：开启时秒针改为跳秒并关闭装饰动画；同时为各表盘补充 ARIA 标注。
+
+
+                7. 整体视觉要像一只真实的高级腕表，而不是普通练习作业。
+
+
+                只输出最终代码，不要解释。</p>
+<p><b>模型</b>：Qwen3.8-27b　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：<a href="https://gaibang.pages.dev/aibench/works/glm53flash-watch.html" rel="nofollow">GLM5.3-flash</a> <a href="https://gaibang.pages.dev/aibench/works/spacebunny-watch.html" rel="nofollow">Space bunny</a> <a href="https://gaibang.pages.dev/aibench/works/gpt56luna-watch.html" rel="nofollow">GPT-5.6 Luna（ChatGPT免费版）</a> <a href="https://gaibang.pages.dev/aibench/works/hy4preview-watch.html" rel="nofollow">Hy4 preview</a> <a href="https://gaibang.pages.dev/aibench/works/seed21pro-watch.html" rel="nofollow">Seed-2.1 Pro</a></p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-watch.html">本题对照页</a></p>
+</div>
+</details>
 </body>
 </html>
 

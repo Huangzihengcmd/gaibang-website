@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>月光牌 · 木纹老式收音机</title>
+<title>老式收音机调频台 · GLM5.3 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「老式收音机调频台」题目下，GLM5.3 的 AI 实作作品。题目要求：做一个木纹老式收音机。旋钮可以拖拽或触摸旋转，频率随之变化；信号弱时有沙沙噪声，信号强时能听到电台音；支持存 3 个预设台，刷新后预设还在；支持键盘左右调频。音频必须用 Web Audio 程序合成，界面用 CSSCan… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/glm53-topic6.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="老式收音机调频台 · GLM5.3 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「老式收音机调频台」题目下，GLM5.3 的 AI 实作作品。题目要求：做一个木纹老式收音机。旋钮可以拖拽或触摸旋转，频率随之变化；信号弱时有沙沙噪声，信号强时能听到电台音；支持存 3 个预设台，刷新后预设还在；支持键盘左右调频。音频必须用 Web Audio 程序合成，界面用 CSSCan… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/glm53-topic6.html" />
+<meta name="keywords" content="老式收音机调频台,GLM5.3,AI 实作,HTML 单文件,老式收音" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -164,6 +172,21 @@
     text-shadow: 0 1px 2px #000; opacity: .9;
   }
   #hint b { color: #ffd98a; }
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
 </style>
 </head>
 <body>
@@ -585,5 +608,19 @@ window.addEventListener('resize', () => { drawWood(); drawGrille(); drawDial(); 
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
 requestAnimationFrame(frame);
 </script>
+
+<details class="gb-seo">
+<summary>本页说明 · 老式收音机调频台 · GLM5.3</summary>
+<div class="gb-seo-body">
+<h1>老式收音机调频台 — GLM5.3 的实现</h1>
+<p><b>题目</b>：做一个木纹老式收音机。旋钮可以拖拽或触摸旋转，频率随之变化；信号弱时有沙沙噪声，信号强时能听到电台音；支持存 3 个预设台，刷新后预设还在；支持键盘左右调频。音频必须用 Web Audio 程序合成，界面用 CSSCanvas 绘制。最终产物是一个 HTML 文件。
+
+验收点
+旋钮跟手，频率边界正确；噪声和电台音能切换；处理浏览器自动播放限制，用户点击后才出声；预设能存能读能删；手机触摸可调；单文件直接打开无外部请求。</p>
+<p><b>模型</b>：GLM5.3　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：</p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-topic6.html">本题对照页</a></p>
+</div>
+</details>
 </body>
 </html>

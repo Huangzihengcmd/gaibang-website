@@ -3,9 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NEON BILLIARDS · 3D 台球</title>
+<title>开放式 3D 台球 · GPT-5.6 Luna（ChatGPT免费版） 的 AI 实作 | 丐帮 AI 能力检测</title>
+<meta name="description" content="「开放式 3D 台球」题目下，GPT-5.6 Luna（ChatGPT免费版） 的 AI 实作作品。题目要求：请你做一个 3D 台球。题目本身不再额外给完整规格，而是先请你说说你对这个项目的看法：你觉得一个好的 3D 台球网页应该具备哪些体验、玩法、视觉与交互要点？在表达完你的判断之后，再根据你自己的理解继续开发，并尽可能把它做… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<link rel="canonical" href="https://gaibang.pages.dev/aibench/works/gpt56luna-billiards.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="丐帮 AI 能力检测" />
+<meta property="og:title" content="开放式 3D 台球 · GPT-5.6 Luna（ChatGPT免费版） 的 AI 实作 | 丐帮 AI 能力检测" />
+<meta property="og:description" content="「开放式 3D 台球」题目下，GPT-5.6 Luna（ChatGPT免费版） 的 AI 实作作品。题目要求：请你做一个 3D 台球。题目本身不再额外给完整规格，而是先请你说说你对这个项目的看法：你觉得一个好的 3D 台球网页应该具备哪些体验、玩法、视觉与交互要点？在表达完你的判断之后，再根据你自己的理解继续开发，并尽可能把它做… 由丐帮 AI 能力检测收录，可在浏览器直接打开查看完整效果。" />
+<meta property="og:url" content="https://gaibang.pages.dev/aibench/works/gpt56luna-billiards.html" />
+<meta name="keywords" content="开放式 3D 台球,GPT-5.6 Luna（ChatGPT免费版）,AI 实作,HTML 单文件,3D POOL" />
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018;color:#eaf6ff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#app{position:fixed;inset:0;background:radial-gradient(circle at 50% 20%,#183141 0,#08131d 45%,#03070b 100%)}canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}.hud{position:absolute;inset:0;pointer-events:none}.top{position:absolute;left:18px;right:18px;top:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.brand{letter-spacing:.24em;font-weight:800;font-size:12px;color:#b8f0ff;text-shadow:0 0 10px rgba(80,220,255,.35)}.sub{margin-top:5px;font-size:10px;color:#728a9a;letter-spacing:.18em}.panel{pointer-events:auto;background:linear-gradient(145deg,rgba(18,31,42,.88),rgba(5,11,16,.78));border:1px solid rgba(135,211,239,.16);box-shadow:0 12px 28px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);border-radius:14px}.score{min-width:235px;padding:12px 14px}.scoreRow{display:flex;justify-content:space-between;align-items:center;gap:16px}.num{font-size:23px;font-weight:850;letter-spacing:.06em}.meta{font-size:10px;color:#7d95a3;letter-spacing:.13em}.rightControls{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.btn{pointer-events:auto;border:1px solid rgba(143,223,255,.2);background:linear-gradient(180deg,rgba(42,70,88,.7),rgba(8,15,20,.92));color:#dff7ff;border-radius:10px;padding:9px 12px;font-size:11px;font-weight:750;letter-spacing:.08em;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}.btn:hover{border-color:rgba(126,230,255,.55);color:#aaf0ff}.btn:active{transform:translateY(1px)}.bottom{position:absolute;left:18px;right:18px;bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px}.help{padding:11px 13px;color:#7892a0;font-size:10px;line-height:1.5;max-width:430px}.power{width:min(320px,44vw);padding:11px 12px}.powerLine{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#7894a2;letter-spacing:.1em}.bar{height:7px;margin-top:8px;border-radius:999px;background:#071018;overflow:hidden;border:1px solid rgba(255,255,255,.05)}.fill{height:100%;width:42%;background:linear-gradient(90deg,#38d5ff,#72ffb9);box-shadow:0 0 14px rgba(71,235,255,.45)}.toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.98);background:rgba(4,9,12,.78);border:1px solid rgba(122,225,255,.28);box-shadow:0 0 38px rgba(45,201,255,.16);padding:12px 18px;border-radius:12px;letter-spacing:.12em;font-size:12px;opacity:0;transition:.25s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}.legend{position:absolute;right:18px;bottom:92px;padding:9px 11px;color:#7892a0;font-size:9px;line-height:1.55;text-align:right}.crosshair{position:absolute;width:26px;height:26px;transform:translate(-50%,-50%);opacity:0;pointer-events:none}.crosshair:before,.crosshair:after{content:"";position:absolute;background:rgba(130,235,255,.9);box-shadow:0 0 8px rgba(110,235,255,.55)}.crosshair:before{left:0;right:0;top:50%;height:1px}.crosshair:after{top:0;bottom:0;left:50%;width:1px}@media(max-width:700px){.top{left:10px;right:10px;top:10px}.bottom{left:10px;right:10px;bottom:10px}.score{min-width:190px}.rightControls{max-width:190px}.legend{display:none}.help{max-width:260px;font-size:9px}.power{width:210px}.btn{padding:8px 10px}}
+</style>
+
+<style>
+.gb-seo{position:fixed;left:0;right:0;bottom:0;z-index:99999;
+  font:13px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8ecf3;background:rgba(8,10,16,.94);border-top:1px solid rgba(255,255,255,.14)}
+.gb-seo>summary{cursor:pointer;padding:7px 14px;list-style:none;opacity:.72;font-size:12px;
+  text-align:center;user-select:none}
+.gb-seo>summary::-webkit-details-marker{display:none}
+.gb-seo[open]>summary{opacity:1;border-bottom:1px solid rgba(255,255,255,.1)}
+.gb-seo-body{max-height:34vh;overflow:auto;padding:14px 18px}
+.gb-seo-body h1{font-size:15px;font-weight:500;margin:0 0 10px;color:#ffd700}
+.gb-seo-body p{margin:6px 0}
+.gb-seo-body a{color:#7fb4ff}
+@media print{.gb-seo{display:none}}
 </style>
 </head>
 <body>
@@ -87,5 +110,16 @@ function resize(){const dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=
 function loop(t){let dt=Math.min(.032,(t-lastT)/1000);lastT=t;moving=step(dt)||moving;stepParticles(dt);if(camMode===0&&!dragging){camYaw+=0.08*dt;}render();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 })();
 </script>
+
+<details class="gb-seo">
+<summary>本页说明 · 开放式 3D 台球 · GPT-5.6 Luna（ChatGPT免费版）</summary>
+<div class="gb-seo-body">
+<h1>开放式 3D 台球 — GPT-5.6 Luna（ChatGPT免费版） 的实现</h1>
+<p><b>题目</b>：请你做一个 3D 台球。题目本身不再额外给完整规格，而是先请你说说你对这个项目的看法：你觉得一个好的 3D 台球网页应该具备哪些体验、玩法、视觉与交互要点？在表达完你的判断之后，再根据你自己的理解继续开发，并尽可能把它做成一个可以直接体验的完整作品。只输出最终可运行结果，不要解释。</p>
+<p><b>模型</b>：GPT-5.6 Luna（ChatGPT免费版）　<b>收录站点</b>：丐帮 AI 能力检测</p>
+<p><b>同题其他模型</b>：<a href="https://gaibang.pages.dev/aibench/works/glm53flash-billiards.html" rel="nofollow">GLM5.3-flash</a> <a href="https://gaibang.pages.dev/aibench/works/spacebunny-billiards.html" rel="nofollow">Space bunny</a> <a href="https://gaibang.pages.dev/aibench/works/hy4preview-billiards.html" rel="nofollow">Hy4 preview</a> <a href="https://gaibang.pages.dev/aibench/works/qwen3827b-billiards.html" rel="nofollow">Qwen3.8-27b</a> <a href="https://gaibang.pages.dev/aibench/works/seed21pro-billiards.html" rel="nofollow">Seed-2.1 Pro</a></p>
+<p><b>返回</b>：<a href="https://gaibang.pages.dev/aibench/">全部题目</a> · <a href="https://gaibang.pages.dev/aibench/t-billiards.html">本题对照页</a></p>
+</div>
+</details>
 </body>
 </html>
